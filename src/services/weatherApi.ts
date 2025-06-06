@@ -371,7 +371,7 @@ export const fetchStationData = async (icao: string): Promise<Station> => {
   try {
     const response = await fetch(`https://api.core.openaip.net/api/airports?icao=${icao}`, {
       headers: {
-        'Authorization': `Bearer ${OPENAIP_API_KEY}`
+        'x-api-key': OPENAIP_API_KEY
       }
     });
     if (response.status === 401 || response.status === 403) {
