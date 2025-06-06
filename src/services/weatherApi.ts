@@ -369,11 +369,7 @@ const calculateHumidity = (temp: number, dewpoint: number): number => {
 
 export const fetchStationData = async (icao: string): Promise<Station> => {
   try {
-    const response = await fetch(`https://api.core.openaip.net/api/airports?icao=${icao}`, {
-      headers: {
-        'x-api-key': OPENAIP_API_KEY
-      }
-    });
+    const response = await fetch(`/api/openaip?icao=${icao}`);
     if (response.status === 401 || response.status === 403) {
       throw new Error('OpenAIP API key is missing, invalid, or unauthorized. Please check your API key and account status.');
     }
