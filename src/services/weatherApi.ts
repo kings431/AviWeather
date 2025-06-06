@@ -120,6 +120,7 @@ const MAJOR_AIRPORTS: Record<string, Station> = {
 };
 
 const OPENAIP_API_KEY = import.meta.env.VITE_OPENAIP_API_KEY;
+console.log('VITE_OPENAIP_API_KEY:', OPENAIP_API_KEY);
 
 // Helper function to get station data from aviationapi.com
 const fetchStationFromAviationApi = async (icao: string): Promise<Station> => {
