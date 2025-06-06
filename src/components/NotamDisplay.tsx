@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Notam } from '../types';
 import { useQuery } from 'react-query';
 import axios from 'axios';
@@ -8,11 +8,7 @@ interface NotamDisplayProps {
 }
 
 const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
-  const [notams, setNotams] = useState<Notam[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const { data, isLoading, error: queryError } = useQuery(
+  const { data: notams = [], isLoading, error } = useQuery(
     ['notams', icao],
     async () => {
       const response = await axios.get(`/api/notam?icao=${icao}`);
@@ -24,59 +20,19 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
     }
   );
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchNotams = async () => {
-      if (!icao) return;
-      
-      setLoading(true);
-      setError(null);
-      setNotams([]);
-      
-      try {
-        const response = await fetch(`/api/notam?icao=${icao}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch NOTAMs: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (isMounted) {
-          setNotams(data || []);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch NOTAMs');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchNotams();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [icao]);
-
-  if (loading) {
+  if (isLoading) {
     return <div className="p-4">Loading NOTAMs...</div>;
   }
 
   if (error) {
     return (
       <div className="p-4 text-red-600 dark:text-red-400">
-        Error: {error}
+        Error: {error instanceof Error ? error.message : String(error)}
       </div>
     );
   }
 
-  if (notams.length === 0) {
+  if (!notams.length) {
     return (
       <div className="p-4 text-gray-600 dark:text-gray-400">
         No NOTAMs found for {icao}
@@ -86,7 +42,7 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
 
   return (
     <div className="space-y-4">
-      {notams.map((notam) => {
+      {notams.map((notam: Notam) => {
         // Extract the raw NOTAM text from the JSON string
         let raw = '';
         try {
@@ -112,7 +68,7 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
         const bodyLines = lines.filter(
           line => line !== headerLine && line !== validityLine
         );
-        const body = bodyLines.join('\n').replace(/^[ED]\)\s*/gm, ''); // Remove E) or D) at start of lines
+        const body = bodyLines.join('\n').replace(/^[ED]\)\s*/gm, '');
 
         return (
           <div
