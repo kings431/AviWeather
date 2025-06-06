@@ -4,6 +4,9 @@ export default async function handler(req, res) {
   const { icao } = req.query;
   const apiKey = process.env.VITE_OPENAIP_API_KEY;
 
+  // Debug: log the API key (remove after debugging)
+  console.log('OpenAIP API Key (backend):', apiKey);
+
   if (!icao) {
     return res.status(400).json({ error: 'Missing ICAO code' });
   }
@@ -16,6 +19,8 @@ export default async function handler(req, res) {
     });
     res.status(200).json(response.data);
   } catch (error) {
+    // Debug: log the full error response
+    console.error('OpenAIP backend error:', error?.response?.data || error);
     res.status(error.response?.status || 500).json({ error: error.message, details: error.response?.data });
   }
 } 
