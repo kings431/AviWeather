@@ -19,7 +19,8 @@ export default async function handler(req, res) {
     const response = await axios.get(url, { timeout: 5000 });
     
     if (!response.data?.data || !Array.isArray(response.data.data)) {
-      return res.status(502).json({ error: 'Invalid response from NavCanada API' });
+      console.error('NavCanada API invalid response:', response.data);
+      return res.status(502).json({ error: 'Invalid response from NavCanada API', navcanada: response.data });
     }
 
     const radarData = response.data.data.find(
@@ -27,23 +28,26 @@ export default async function handler(req, res) {
     );
 
     if (!radarData?.text) {
-      return res.status(404).json({ error: 'No radar data found for this station' });
+      console.error('No radar data found for this station:', response.data);
+      return res.status(404).json({ error: 'No radar data found for this station', navcanada: response.data });
     }
 
     let parsedData;
     try {
       parsedData = JSON.parse(radarData.text);
     } catch (e) {
-      return res.status(502).json({ error: 'Malformed radar data from NavCanada' });
+      console.error('Malformed radar data from NavCanada:', radarData.text);
+      return res.status(502).json({ error: 'Malformed radar data from NavCanada', navcanada: radarData.text });
     }
 
     const frames = parsedData.frame_lists || [];
     res.json({ frames });
   } catch (err) {
-    console.error('Radar fetch error:', err);
+    console.error('Radar fetch error:', err, err?.response?.data);
     res.status(500).json({ 
       error: 'Failed to fetch radar data', 
-      details: err instanceof Error ? err.message : String(err) 
+      details: err instanceof Error ? err.message : String(err),
+      navcanada: err?.response?.data || null
     });
   }
 } 
