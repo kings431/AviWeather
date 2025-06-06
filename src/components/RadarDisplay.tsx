@@ -15,7 +15,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/radar?station=${icao}`)
+    fetch(`/api/radar?icao=${icao}`)
       .then(res => res.json())
       .then(data => {
         setFrames(data.frames || []);

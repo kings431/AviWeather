@@ -59,10 +59,10 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
   const station = icao || data.station;
 
   useEffect(() => {
-    fetch(`/api/metar?station=${station}&metar_choice=${metarChoice}`)
+    fetch(`/api/metar?icao=${station}`)
       .then(res => res.json())
       .then(data => setMetars(data.metars || []));
-  }, [station, metarChoice]);
+  }, [station]);
 
   // Exclude the latest METAR (already shown in detail above)
   const previousMetars = metars.filter(m => m.text !== data.raw);
