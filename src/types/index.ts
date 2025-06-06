@@ -15,7 +15,7 @@ export type MetarData = {
   raw: string;
   station: string;
   time: string;
-  wind: {
+  wind?: {
     direction: number;
     speed: number;
     gust?: number;
@@ -86,6 +86,7 @@ export type WeatherData = {
   metar?: MetarData;
   taf?: TafData;
   error?: string;
+  lastUpdated?: number;
 };
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -111,3 +112,11 @@ export type AppActions = {
   setError: (error: string | null) => void;
   clearError: () => void;
 };
+
+export interface Notam {
+  id: string;
+  title: string;
+  description: string;
+  validFrom: string;
+  validTo: string;
+}

@@ -198,6 +198,43 @@ const ForecastPeriod: React.FC<{ period: TafPeriod; index: number; tafIssueTime?
   );
 };
 
+// NavCanada-style TAF formatting: header on first line, forecast period on second, main groups indented, RMK not indented
+function formatTaf(taf: string): string {
+  taf = taf.trim().replace(/=+$/, '');
+  const tokens = taf.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = '';
+  let indentLevel = 0;
+  let afterHeader = false;
+
+  const mainKeywords = ['FM', 'BECMG', 'TEMPO', 'PROB', 'RMK'];
+
+  function isKeyword(token: string) {
+    return mainKeywords.some(k => token.startsWith(k));
+  }
+
+  tokens.forEach((token, idx) => {
+    if (idx === 0) {
+      currentLine = token;
+    } else if (!afterHeader && !isKeyword(token)) {
+      currentLine += ' ' + token;
+    } else if (!afterHeader && isKeyword(token)) {
+      lines.push(currentLine);
+      currentLine = token;
+      afterHeader = true;
+      indentLevel = token === 'FM' ? 0 : 1;
+    } else if (isKeyword(token)) {
+      if (currentLine) lines.push('  '.repeat(indentLevel) + currentLine);
+      indentLevel = token === 'FM' ? 0 : 1;
+      currentLine = token;
+    } else {
+      currentLine += ' ' + token;
+    }
+  });
+  if (currentLine) lines.push('  '.repeat(indentLevel) + currentLine);
+  return lines.join('\n');
+}
+
 const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
   // Support both legacy (forecast) and new (periods) keys for compatibility
   const periods = (data && (data.periods || (data as any).forecast)) || [];
@@ -208,7 +245,7 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
 
   if (!data || !Array.isArray(periods) || periods.length === 0) {
     return (
-      <div className="card p-4 animate-fade-in">
+      <div className="card p-4 animate-fade-in print:hidden">
         <h3 className="text-xl font-medium">TAF</h3>
         <div className="text-gray-500 dark:text-gray-400 mt-2">No TAF data available.</div>
       </div>
@@ -216,7 +253,7 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
   }
 
   return (
-    <div className="card space-y-4 animate-fade-in">
+    <div className="card space-y-4 animate-fade-in print:hidden">
       <div>
         <h3 className="text-xl font-medium">TAF</h3>
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -234,9 +271,9 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
           )}
         </div>
       </div>
-      <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
-        {data.raw}
-      </div>
+      <pre className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto whitespace-pre-line">
+        {formatTaf(data.raw)}
+      </pre>
       <div className="space-y-3">
         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Forecast Periods</h4>
         <div className="space-y-3">

@@ -233,7 +233,7 @@ const parseMetar = (rawMetar: string, station: string): MetarData => {
     raw: rawMetar,
     station,
     time: parts[timeIndex] || new Date().toISOString(),
-    wind,
+    wind: wind,
     visibility,
     conditions: [], // NOAA doesn't provide parsed conditions
     clouds,
@@ -428,8 +428,6 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       ? tafResponse.data.trim()
       : tafResponse.data.contents?.trim() || '';
 
-    console.log('NOAA TAF raw text for', icao, ':', tafText); // Debug log
-
     // Only try to parse TAF if we have actual data
     const weatherData: WeatherData = {
       metar: metarText ? parseMetar(metarText, icao) : undefined,
@@ -454,3 +452,5 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
     throw new Error('Failed to fetch weather data. Please try again later.');
   }
 };
+
+export { parseMetar };

@@ -26,7 +26,6 @@ const FavoritesBar: React.FC = () => {
       setSelectedStation(station);
     } catch (error) {
       setError(`Unable to fetch weather data for ${stationId}`);
-      console.error('Error fetching weather data:', error);
     } finally {
       setIsLoading(false);
     }

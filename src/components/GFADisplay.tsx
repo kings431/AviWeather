@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import GfaImage from './GfaImage';
 
 interface GFADisplayProps {
   icao: string;
@@ -16,9 +17,8 @@ const CANADA_GFA_REGIONS: Record<string, { name: string; code: string }> = {
 };
 
 const GFA_TYPES = [
-  { label: 'Clouds', key: 'CLD' },
-  { label: 'Weather', key: 'WX' },
-  { label: 'Icing/Turb/Freezing', key: 'FZLVL' },
+  { label: 'Clouds & Weather', key: 'CLDWX' },
+  { label: 'Icing, Turbulence & Freezing Level', key: 'TURBC' },
 ];
 
 const getCanadaRegion = (icao: string) => {
@@ -52,31 +52,33 @@ const GFADisplay: React.FC<GFADisplayProps> = ({ icao }) => {
     : '';
 
   return (
-    <div className="card mt-6">
-      <h3 className="text-lg font-semibold mb-2">Graphical Area Forecasts (GFAs)</h3>
+    <div className="card mt-6 print:contents">
+      <h3 className="text-lg font-semibold mb-2 print:hidden">Graphical Area Forecasts (GFAs)</h3>
       {isCanada && (
-        <div className="flex flex-col items-center">
-          <a
-            href="https://spaces.navcanada.ca/workspace/flightplanning/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-primary-600 text-white rounded shadow hover:bg-primary-700 transition mt-4"
-          >
-            View Canadian GFA Charts on Nav Canada Tool
-          </a>
-          <div className="text-xs text-gray-500 mt-2">
-            Direct GFA images are not available for public use. Please use the official Nav Canada GFA tool.
+        <div className="flex flex-col items-center print:contents">
+          <div className="flex gap-2 mb-2 print:hidden">
+            {GFA_TYPES.map(type => (
+              <button
+                key={type.key}
+                className={`px-3 py-1 rounded ${gfaType === type.key ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
+                onClick={() => setGfaType(type.key as any)}
+              >
+                {type.label} - {region?.name}
+              </button>
+            ))}
           </div>
+          <GfaImage station={icao} type={gfaType as any} />
         </div>
       )}
       {isUSA && (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center print:hidden">
           <iframe
             src="https://aviationweather.gov/gfa/"
             title="FAA GFA Tool"
             width="100%"
-            height="600"
-            style={{ border: '1px solid #ccc', borderRadius: '8px' }}
+            style={{ border: '1px solid #ccc', borderRadius: '8px', width: '100%', height: 'auto', minHeight: 0 }}
+            className="w-full h-auto"
+            allowFullScreen
           />
           <a
             href="https://aviationweather.gov/gfa/"
@@ -89,7 +91,7 @@ const GFADisplay: React.FC<GFADisplayProps> = ({ icao }) => {
         </div>
       )}
       {!isCanada && !isUSA && (
-        <div className="text-sm text-gray-500">GFA data is only available for Canada and the USA.</div>
+        <div className="text-sm text-gray-500 print:hidden">GFA data is only available for Canada and the USA.</div>
       )}
     </div>
   );

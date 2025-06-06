@@ -32,7 +32,7 @@ const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
   };
   
   return (
-    <div className="card">
+    <div className="card print:hidden">
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <div className="flex items-center">

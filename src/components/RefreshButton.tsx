@@ -22,7 +22,6 @@ const RefreshButton: React.FC<RefreshButtonProps> = ({ stationId }) => {
       setWeatherData(stationId, weatherData);
     } catch (error) {
       setError(`Failed to refresh weather data for ${stationId}`);
-      console.error('Refresh error:', error);
     } finally {
       setIsRefreshing(false);
     }

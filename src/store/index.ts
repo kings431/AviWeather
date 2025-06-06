@@ -4,7 +4,9 @@ import { AppState, AppActions, Station, WeatherData, ThemeMode } from '../types'
 
 const MAX_RECENT_SEARCHES = 5;
 
-const useStore = create<AppState & AppActions>()(
+interface StoreState extends AppState, AppActions {}
+
+const useStore = create<StoreState>()(
   persist(
     (set) => ({
       favorites: [],
@@ -19,7 +21,10 @@ const useStore = create<AppState & AppActions>()(
         set((state) => ({
           weatherData: {
             ...state.weatherData,
-            [stationId]: data,
+            [stationId]: {
+              ...data,
+              lastUpdated: Date.now(),
+            },
           },
         })),
 

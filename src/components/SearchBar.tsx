@@ -62,15 +62,31 @@ const SearchBar: React.FC = () => {
       
     } catch (error) {
       setError(`Unable to find weather data for ${icao}`);
-      console.error('Search error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSearchForStation = async (station: Station) => {
+    clearError();
+    setIsLoading(true);
+    try {
+      // Fetch weather data
+      const weatherData = await fetchWeatherData(station.icao);
+      setWeatherData(station.icao, weatherData);
+      setSelectedStation(station);
+      addToRecentSearches(station);
+      setQuery('');
+      setIsDropdownOpen(false);
+    } catch (error) {
+      setError(`Unable to find weather data for ${station.icao}`);
     } finally {
       setIsLoading(false);
     }
   };
   
   const selectStation = (station: Station) => {
-    setQuery(station.icao);
-    setIsDropdownOpen(false);
+    handleSearchForStation(station);
   };
   
   return (
