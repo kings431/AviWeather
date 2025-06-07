@@ -26,7 +26,8 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
                 imageId: img.id,
                 validTime: innerFrame.sv,
                 endTime: innerFrame.ev,
-                created: img.created
+                created: img.created,
+                imageUrl: `/api/radar/image?id=${img.id}`
               });
             });
           });
