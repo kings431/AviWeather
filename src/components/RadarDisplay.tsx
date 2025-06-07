@@ -9,7 +9,6 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [frameIdx, setFrameIdx] = useState(0);
-  const [playing, setPlaying] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -18,11 +17,26 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
     fetch(`/api/radar?icao=${icao}`)
       .then(res => res.json())
       .then(data => {
-        setFrames(data.frames || []);
-        setFrameIdx((data.frames?.length || 1) - 1); // default to latest
+        // Flatten the nested frames/images structure from the API
+        const flatFrames: any[] = [];
+        (data.frames || []).forEach((outerFrame: any) => {
+          (outerFrame.frames || []).forEach((innerFrame: any) => {
+            (innerFrame.images || []).forEach((img: any) => {
+              flatFrames.push({
+                imageId: img.id,
+                validTime: innerFrame.sv,
+                endTime: innerFrame.ev,
+                created: img.created,
+                imageUrl: `/api/radar/image?id=${img.id}`
+              });
+            });
+          });
+        });
+        setFrames(flatFrames);
+        setFrameIdx((flatFrames.length || 1) - 1); // default to latest
         setLoading(false);
       })
-      .catch(err => {
+      .catch(() => {
         setError('Failed to load radar images');
         setLoading(false);
       });
@@ -30,7 +44,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   }, [icao]);
 
   useEffect(() => {
-    if (playing && frames.length > 1) {
+    if (frames.length > 1) {
       intervalRef.current = setInterval(() => {
         setFrameIdx(idx => (idx + 1) % frames.length);
       }, 600);
@@ -39,45 +53,31 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return () => {};
     }
-  }, [playing, frames.length]);
+  }, [frames.length]);
 
   if (loading) return <div>Loading radar...</div>;
   if (error || !frames.length) return <div className="text-sm text-gray-500">No radar data available.</div>;
 
-  const frame = frames[frameIdx];
-  const imageUrl = `https://plan.navcanada.ca/weather/images/${frame.imageId}.image`;
-  const validDate = frame.validTime ? new Date(frame.validTime + 'Z') : null;
-  const validTime = validDate ? validDate.toUTCString() : '';
-  const minutesAgo = validDate
-    ? Math.floor((Date.now() - validDate.getTime()) / 60000)
-    : '';
-
   return (
-    <div className="card mt-6">
-      <h3 className="text-lg font-semibold mb-2">Radar</h3>
-      <img src={imageUrl} alt="Radar" className="w-full h-auto mx-auto" />
-      <div className="flex items-center gap-2 mt-2">
-        <button
-          className="px-2 py-1 rounded bg-primary-600 text-white text-xs hover:bg-primary-700"
-          onClick={() => setPlaying(p => !p)}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <input
-          type="range"
-          min={0}
-          max={frames.length - 1}
-          value={frameIdx}
-          onChange={e => setFrameIdx(Number(e.target.value))}
-          className="flex-1"
-        />
+    <div className="card mt-6 print:contents">
+      <h3 className="text-lg font-semibold mb-2 print:hidden">Radar</h3>
+      <div className="flex flex-col items-center print:grid print:grid-cols-1 print:gap-2 print:items-start print:justify-start">
+        {frames.length > 0 ? (
+          <img
+            src={frames[frameIdx].imageUrl}
+            alt="Radar"
+            className="rounded shadow-md max-w-lg w-full h-auto print:max-w-[350px] print:rounded-none print:shadow-none print:w-auto print:h-auto"
+            style={{ objectFit: 'contain' }}
+          />
+        ) : (
+          <div className="text-gray-500 dark:text-gray-400">No radar data available.</div>
+        )}
       </div>
-      <div className="text-center text-xs mt-2">
-        {validTime && <div>{validTime}</div>}
-        {minutesAgo !== '' && <div>{minutesAgo} minutes ago</div>}
+      <div className="mt-4 text-sm text-gray-600 print:text-xs print:mt-2">
+        Source: <a href="https://weather.gc.ca/radar/index_e.html" target="_blank" rel="noopener noreferrer" className="underline">Environment Canada Radar</a>
       </div>
     </div>
   );
 };
 
-export default RadarDisplay; 
+export default RadarDisplay;

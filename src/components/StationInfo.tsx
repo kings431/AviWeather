@@ -1,7 +1,9 @@
 import React from 'react';
-import { MapPin, Star, StarOff, Navigation } from 'lucide-react';
+import { MapPin, Star, StarOff } from 'lucide-react';
 import { Station } from '../types';
 import useStore from '../store';
+import tzlookup from 'tz-lookup';
+import { DateTime } from 'luxon';
 
 interface StationInfoProps {
   station: Station;
@@ -19,18 +21,24 @@ const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
     }
   };
 
-  const formatCoordinates = () => {
-    if (!station.latitude || !station.longitude) return 'Coordinates not available';
-    
-    const latDir = station.latitude >= 0 ? 'N' : 'S';
-    const lonDir = station.longitude >= 0 ? 'E' : 'W';
-    
-    const latAbs = Math.abs(station.latitude);
-    const lonAbs = Math.abs(station.longitude);
-    
-    return `${latAbs.toFixed(4)}° ${latDir}, ${lonAbs.toFixed(4)}° ${lonDir}`;
+  // Helper to get local time in military (24h) format, using coordinates for timezone
+  const getLocalTime = () => {
+    if (!station.latitude || !station.longitude) return 'N/A';
+    try {
+      const tz = tzlookup(station.latitude, station.longitude);
+      return DateTime.now().setZone(tz).toFormat('HH:mm:ss');
+    } catch {
+      // fallback: browser local time
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
   };
-  
+
+  // Helper to get Zulu (UTC) time with seconds
+  const getZuluTime = () => {
+    const now = new Date();
+    return now.toISOString().slice(11, 19).replace(/:/g, '') + 'Z';
+  };
+
   return (
     <div className="card print:hidden">
       <div className="flex justify-between items-start">
@@ -44,31 +52,19 @@ const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
             )}
           </div>
           
-          {station.name && (
-            <h3 className="text-lg text-gray-700 dark:text-gray-300 mt-0.5">
-              {station.name}
-            </h3>
-          )}
+          {/* Always show the real airport name if available, fallback to ICAO Airport */}
+          <h3 className="text-lg text-gray-700 dark:text-gray-300 mt-0.5">
+            {station.icao === 'CYBR' ? 'Brandon Airport' : (station.name || `${station.icao} Airport`)}
+          </h3>
           
           <div className="flex items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
             <MapPin size={16} className="mr-1" />
             <span>
-              {
-                (() => {
-                  const parts = [station.city, station.state, station.country]
-                    .filter(x => x && x !== 'Unknown');
-                  return parts.length > 0 ? parts.join(', ') : 'Location unavailable';
-                })()
-              }
+              {station.latitude && station.longitude
+                ? `${station.latitude.toFixed(4)}, ${station.longitude.toFixed(4)}`
+                : 'Location unavailable'}
             </span>
           </div>
-          
-          {(station.latitude && station.longitude) && (
-            <div className="flex items-center mt-1 text-sm text-gray-600 dark:text-gray-400">
-              <Navigation size={16} className="mr-1" />
-              <span>{formatCoordinates()}</span>
-            </div>
-          )}
           
           {station.elevation !== undefined && (
             <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -77,15 +73,21 @@ const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
           )}
         </div>
         
+        {/* Right side: Local and Zulu time */}
+        <div className="flex flex-col items-end gap-1">
+          <div className="text-xs text-gray-500 dark:text-gray-400">Local Time (24h): <span className="font-mono">{getLocalTime()}</span></div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">Zulu Time: <span className="font-mono">{getZuluTime()}</span></div>
+        </div>
+        
         <button
           onClick={toggleFavorite}
-          className="text-warning-500 hover:text-warning-600 dark:text-warning-400 dark:hover:text-warning-300"
+          className="text-warning-500 hover:text-warning-600 dark:text-warning-400 dark:hover:text-warning-300 ml-4"
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           {isFavorite ? (
-            <Star size={24} fill="currentColor" />
+            <StarOff size={22} />
           ) : (
-            <StarOff size={24} />
+            <Star size={22} />
           )}
         </button>
       </div>
