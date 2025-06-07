@@ -402,32 +402,39 @@ export const fetchStationData = async (icao: string): Promise<Station> => {
 
 export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
   try {
-    const metarUrl = `${NOAA_BASE_URL}/metar.php?ids=${icao}&format=raw`;
+    // Fetch METARs from NavCanada
+    const metarRes = await axios.get(`/api/metar?icao=${icao}&metar_choice=6`);
+    const metars = metarRes.data.metars || [];
+    const latestMetar = metarRes.data.latestMetar || null;
+
+    // Fetch TAF from NOAA (unchanged)
     const tafUrl = `${NOAA_BASE_URL}/taf.php?ids=${icao}&format=raw`;
-
-    const [metarResponse, tafResponse] = await Promise.all([
-      axios.get(`${CORS_PROXY}${encodeURIComponent(metarUrl)}`),
-      axios.get(`${CORS_PROXY}${encodeURIComponent(tafUrl)}`).catch(error => {
-        // TAF might not be available for all stations
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-          return { data: '' };
-        }
-        throw error;
-      })
-    ]);
-
-    // The proxy returns the data in a different format
-    const metarText = typeof metarResponse.data === 'string' 
-      ? metarResponse.data.trim()
-      : metarResponse.data.contents?.trim() || '';
-    
+    const tafResponse = await axios.get(`${CORS_PROXY}${encodeURIComponent(tafUrl)}`).catch(error => {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return { data: '' };
+      }
+      throw error;
+    });
     const tafText = typeof tafResponse.data === 'string'
       ? tafResponse.data.trim()
       : tafResponse.data.contents?.trim() || '';
 
     // Only try to parse TAF if we have actual data
     const weatherData: WeatherData = {
-      metar: metarText ? parseMetar(metarText, icao) : undefined,
+      metar: latestMetar ? {
+        raw: latestMetar.text,
+        station: latestMetar.location,
+        time: latestMetar.startValidity,
+        wind: undefined,
+        visibility: { value: 0, unit: 'sm' },
+        conditions: [],
+        clouds: [],
+        temperature: { celsius: 0, fahrenheit: 0 },
+        dewpoint: { celsius: 0, fahrenheit: 0 },
+        humidity: 0,
+        barometer: { hpa: 0, inHg: 0 },
+        flight_category: 'VFR',
+      } : undefined,
       taf: tafText && tafText !== 'No TAF available' ? parseTaf(tafText, icao) : undefined
     };
 
