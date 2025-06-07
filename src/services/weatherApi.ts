@@ -421,20 +421,7 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
 
     // Only try to parse TAF if we have actual data
     const weatherData: WeatherData = {
-      metar: latestMetar ? {
-        raw: latestMetar.text,
-        station: latestMetar.location,
-        time: latestMetar.startValidity,
-        wind: undefined,
-        visibility: { value: 0, unit: 'sm' },
-        conditions: [],
-        clouds: [],
-        temperature: { celsius: 0, fahrenheit: 0 },
-        dewpoint: { celsius: 0, fahrenheit: 0 },
-        humidity: 0,
-        barometer: { hpa: 0, inHg: 0 },
-        flight_category: 'VFR',
-      } : undefined,
+      metar: latestMetar ? parseMetar(latestMetar.text, latestMetar.location) : undefined,
       taf: tafText && tafText !== 'No TAF available' ? parseTaf(tafText, icao) : undefined
     };
 
