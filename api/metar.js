@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 const querySchema = z.object({
   icao: z.string().length(4),
+  metar_choice: z.string().optional(),
 });
 
 export default async function handler(req, res) {
@@ -13,12 +14,12 @@ export default async function handler(req, res) {
   if (!result.success) {
     return res.status(400).json({ error: 'Invalid input', details: result.error.errors });
   }
-  const { icao } = result.data;
+  const { icao, metar_choice = '6' } = result.data;
   try {
-    const url = `https://aviationweather.gov/cgi-bin/data/metar.php?ids=${icao}&format=raw`;
+    const url = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&alpha=metar&metar_choice=${metar_choice}&_=${Date.now()}`;
     const response = await axios.get(url, { timeout: 5000 });
-    res.json({ data: response.data });
+    res.json({ metars: response.data.data || [] });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch METAR', details: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: 'Failed to fetch METARs', details: err instanceof Error ? err.message : String(err) });
   }
 } 

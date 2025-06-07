@@ -59,20 +59,13 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
   const station = icao || data.station;
 
   useEffect(() => {
-    fetch(`/api/metar?icao=${station}`)
+    fetch(`/api/metar?icao=${station}&metar_choice=${metarChoice}`)
       .then(res => res.json())
       .then(data => setMetars(data.metars || []));
-  }, [station]);
+  }, [station, metarChoice]);
 
-  // Exclude the latest METAR (already shown in detail above) and filter by selected hour range
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - metarChoice * 60 * 60 * 1000);
-  const previousMetars = metars
-    .filter(m => m.text !== data.raw)
-    .filter(m => {
-      const metarTime = m.time || m.startValidity;
-      return metarTime && new Date(metarTime) >= cutoff;
-    });
+  // Exclude the latest METAR (already shown in detail above)
+  const previousMetars = metars.filter(m => m.text !== data.raw);
 
   return (
     <div className="card space-y-4 animate-fade-in print:hidden">
