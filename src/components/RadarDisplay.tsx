@@ -19,6 +19,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   const [frameIdx, setFrameIdx] = useState(0);
   const [radarType, setRadarType] = useState<RadarType>('echotop');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -57,7 +58,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   }, [icao, radarType]);
 
   useEffect(() => {
-    if (frames.length > 1) {
+    if (isPlaying && frames.length > 1) {
       intervalRef.current = setInterval(() => {
         setFrameIdx(idx => (idx + 1) % frames.length);
       }, 600);
@@ -66,7 +67,26 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return () => {};
     }
-  }, [frames.length]);
+  }, [frames.length, isPlaying]);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFrameIdx(Number(e.target.value));
+    setIsPlaying(false);
+  };
+
+  const handlePrev = () => {
+    setFrameIdx(idx => (idx - 1 + frames.length) % frames.length);
+    setIsPlaying(false);
+  };
+
+  const handleNext = () => {
+    setFrameIdx(idx => (idx + 1) % frames.length);
+    setIsPlaying(false);
+  };
+
+  const handlePlayPause = () => {
+    setIsPlaying(p => !p);
+  };
 
   if (loading) return <div>Loading radar...</div>;
   if (error || !frames.length) return <div className="text-sm text-gray-500">No radar data available.</div>;
@@ -95,6 +115,34 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
           />
         ) : (
           <div className="text-gray-500 dark:text-gray-400">No radar data available.</div>
+        )}
+        {/* Controls: slider, prev, next, play/pause */}
+        {frames.length > 1 && (
+          <div className="w-full max-w-lg mt-4 flex flex-col items-center">
+            <input
+              type="range"
+              min={0}
+              max={frames.length - 1}
+              value={frameIdx}
+              onChange={handleSliderChange}
+              className="w-full mb-2"
+            />
+            <div className="flex justify-center gap-4 w-full">
+              <button onClick={handlePrev} aria-label="Previous frame" className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-xl">&#x25C0;</button>
+              <button onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-xl">
+                {isPlaying ? '❚❚' : '▶'}
+              </button>
+              <button onClick={handleNext} aria-label="Next frame" className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-xl">&#x25B6;</button>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              {frames[frameIdx].validTime ? (
+                <>
+                  {frames[frameIdx].validTime}Z
+                  <span className="ml-2">{frames[frameIdx].created ? (new Date(frames[frameIdx].created).toLocaleString()) : ''}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
         )}
       </div>
       <div className="mt-4 text-sm text-gray-600 print:text-xs print:mt-2">
