@@ -23,22 +23,21 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
     }
   };
 
-  // Helper to get local time in military (24h) format, using coordinates for timezone
+  // Helper to get local time in ISO 8601 format, using coordinates for timezone
   const getLocalTime = () => {
     if (!station.latitude || !station.longitude) return 'N/A';
     try {
       const tz = tzlookup(station.latitude, station.longitude);
-      return DateTime.now().setZone(tz).toFormat('HH:mm:ss');
+      return DateTime.now().setZone(tz).toISO({ suppressMilliseconds: true });
     } catch {
       // fallback: browser local time
-      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      return new Date().toISOString().replace(/\.\d{3}Z$/, '');
     }
   };
 
-  // Helper to get Zulu (UTC) time with seconds
+  // Helper to get Zulu (UTC) time in ISO 8601 format
   const getZuluTime = () => {
-    const now = new Date();
-    return now.toISOString().slice(11, 19).replace(/:/g, '') + 'Z';
+    return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   };
 
   return (
