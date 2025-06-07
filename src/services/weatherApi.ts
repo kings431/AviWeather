@@ -419,11 +419,10 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       ? tafResponse.data.trim()
       : tafResponse.data.contents?.trim() || '';
 
-    // Strip 'METAR XXXX ' prefix from NavCanada METAR text
+    // Strip only 'METAR ' prefix from NavCanada METAR text, keep station code
     const originalMetarText = latestMetar?.text || '';
+    const metarText = originalMetarText.replace(/^METAR\s+/, '').replace(/=$/, '');
     console.log('Original METAR text:', originalMetarText);
-
-    const metarText = originalMetarText.replace(/^METAR\s+\w{4}\s+/, '');
     console.log('Stripped METAR text:', metarText);
 
     let parsedMetar;
