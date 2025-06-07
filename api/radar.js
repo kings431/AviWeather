@@ -7,7 +7,7 @@ const querySchema = z.object({
 });
 
 const RADAR_ENDPOINTS = {
-  echotop: (icao) => `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&image=RADAR/ECHOTOP`,
+  echotop: (icao) => `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&image=COMPOSITE_RADAR/ECHOTOP/PAC&image=COMPOSITE_RADAR/ECHOTOP/WRN&image=COMPOSITE_RADAR/ECHOTOP/ONT&image=COMPOSITE_RADAR/ECHOTOP/QUE&image=COMPOSITE_RADAR/ECHOTOP/ERN`,
   rain: (icao) => `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&image=COMPOSITE_RADAR/LOW_RAIN~CAPPI/PAC&image=COMPOSITE_RADAR/LOW_RAIN~CAPPI/WRN&image=COMPOSITE_RADAR/LOW_RAIN~CAPPI/ONT&image=COMPOSITE_RADAR/LOW_RAIN~CAPPI/QUE&image=COMPOSITE_RADAR/LOW_RAIN~CAPPI/ERN`,
   snow: (icao) => `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&image=COMPOSITE_RADAR/LOW_SNOW~CAPPI/PAC&image=COMPOSITE_RADAR/LOW_SNOW~CAPPI/WRN&image=COMPOSITE_RADAR/LOW_SNOW~CAPPI/ONT&image=COMPOSITE_RADAR/LOW_SNOW~CAPPI/QUE&image=COMPOSITE_RADAR/LOW_SNOW~CAPPI/ERN`,
 };
