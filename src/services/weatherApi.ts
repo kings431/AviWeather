@@ -424,6 +424,7 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       metar: latestMetar ? parseMetar(latestMetar.text, latestMetar.location) : undefined,
       taf: tafText && tafText !== 'No TAF available' ? parseTaf(tafText, icao) : undefined
     };
+    console.log('Parsed METAR:', weatherData.metar);
 
     if (!weatherData.metar && !weatherData.taf) {
       throw new Error(`No weather data available for ${icao}`);
