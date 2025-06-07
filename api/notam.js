@@ -15,20 +15,11 @@ export default async function handler(req, res) {
   }
   const { icao } = result.data;
   try {
-    const url = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&image=NOTAM`;
+    const url = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&alpha=notam&notam_choice=default&_=${Date.now()}`;
     const response = await axios.get(url, { timeout: 5000 });
-    if (!response.data?.data || !Array.isArray(response.data.data)) {
-      return res.status(502).json({ error: 'Invalid response from NavCanada API' });
-    }
-    const notams = (response.data.data || []).map((n, idx) => ({
-      id: n.pk || idx,
-      location: n.location,
-      startValidity: n.startValidity,
-      endValidity: n.endValidity,
-      text: n.text,
-    }));
-    res.json(notams);
+    // Return the full response (meta and data) as received from NavCanada
+    res.json(response.data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch NOTAMs', details: err instanceof Error ? err.message : String(err) });
   }
-} 
+}
