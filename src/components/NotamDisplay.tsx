@@ -34,7 +34,7 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
         const data = await response.json();
         
         if (isMounted) {
-          setNotams(data || []);
+          setNotams(Array.isArray(data) ? data : data?.data || []);
         }
       } catch (err) {
         if (isMounted) {
