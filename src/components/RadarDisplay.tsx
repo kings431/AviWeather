@@ -125,20 +125,21 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
               max={frames.length - 1}
               value={frameIdx}
               onChange={handleSliderChange}
-              className="w-full mb-2"
+              className="w-full mb-4 accent-blue-600 h-2 rounded-lg appearance-none bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{ height: '8px' }}
             />
-            <div className="flex justify-center gap-4 w-full">
-              <button onClick={handlePrev} aria-label="Previous frame" className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-xl">&#x25C0;</button>
-              <button onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-xl">
+            <div className="flex justify-center gap-6 w-full mb-2">
+              <button onClick={handlePrev} aria-label="Previous frame" className="px-5 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow hover:bg-blue-100 dark:hover:bg-blue-900 text-2xl text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">&#x25C0;</button>
+              <button onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="px-5 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow hover:bg-blue-100 dark:hover:bg-blue-900 text-2xl text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {isPlaying ? '❚❚' : '▶'}
               </button>
-              <button onClick={handleNext} aria-label="Next frame" className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-xl">&#x25B6;</button>
+              <button onClick={handleNext} aria-label="Next frame" className="px-5 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow hover:bg-blue-100 dark:hover:bg-blue-900 text-2xl text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">&#x25B6;</button>
             </div>
             <div className="text-xs text-gray-500 mt-2">
               {frames[frameIdx].validTime ? (
                 <>
                   {frames[frameIdx].validTime}Z
-                  <span className="ml-2">{frames[frameIdx].created ? (new Date(frames[frameIdx].created).toLocaleString()) : ''}</span>
+                  <span className="ml-2">{frames[frameIdx].created ? new Date(frames[frameIdx].created + 'Z').toISOString().replace('T', ' ').replace(/\..+/, '') + ' UTC' : ''}</span>
                 </>
               ) : null}
             </div>
