@@ -68,13 +68,6 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
             alt="Radar"
             className="rounded shadow-md max-w-lg w-full h-auto print:max-w-[350px] print:rounded-none print:shadow-none print:w-auto print:h-auto"
             style={{ objectFit: 'contain' }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              const fallback = document.createElement('div');
-              fallback.className = 'text-gray-500 dark:text-gray-400';
-              fallback.innerText = 'Radar image not available.';
-              e.currentTarget.parentNode?.appendChild(fallback);
-            }}
           />
         ) : (
           <div className="text-gray-500 dark:text-gray-400">No radar data available.</div>
