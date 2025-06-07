@@ -8,7 +8,7 @@ interface NotamDisplayProps {
 }
 
 const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
-  const { data: notams = [], isLoading, error } = useQuery(
+  const { data: notamResponse, isLoading, error } = useQuery(
     ['notams', icao],
     async () => {
       const response = await axios.get(`/api/notam?icao=${icao}`);
@@ -19,6 +19,8 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
       refetchInterval: 60000,
     }
   );
+
+  const notams = notamResponse?.data || [];
 
   if (isLoading) {
     return <div className="p-4">Loading NOTAMs...</div>;
@@ -92,4 +94,4 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
   );
 };
 
-export default NotamDisplay; 
+export default NotamDisplay;
