@@ -420,14 +420,25 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       : tafResponse.data.contents?.trim() || '';
 
     // Strip 'METAR XXXX ' prefix from NavCanada METAR text
-    const metarText = latestMetar && typeof latestMetar.text === 'string'
-      ? latestMetar.text.replace(/^METAR\s+\w{4}\s+/, '')
-      : '';
+    const originalMetarText = latestMetar?.text || '';
+    console.log('Original METAR text:', originalMetarText);
+
+    const metarText = originalMetarText.replace(/^METAR\s+\w{4}\s+/, '');
+    console.log('Stripped METAR text:', metarText);
+
+    let parsedMetar;
+    try {
+      parsedMetar = latestMetar ? parseMetar(metarText, latestMetar.location) : undefined;
+      console.log('Parsed METAR:', parsedMetar);
+    } catch (e) {
+      console.error('parseMetar threw:', e);
+      parsedMetar = undefined;
+    }
+
     const weatherData: WeatherData = {
-      metar: latestMetar ? parseMetar(metarText, latestMetar.location) : undefined,
+      metar: parsedMetar,
       taf: tafText && tafText !== 'No TAF available' ? parseTaf(tafText, icao) : undefined
     };
-    console.log('Parsed METAR:', weatherData.metar);
 
     if (!weatherData.metar && !weatherData.taf) {
       throw new Error(`No weather data available for ${icao}`);
