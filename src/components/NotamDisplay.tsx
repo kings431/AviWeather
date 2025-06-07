@@ -42,21 +42,19 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
   }
 
   return (
-    <div className="card mt-6 print:contents">
-      <h3 className="text-lg font-semibold mb-2 print:hidden">NOTAMs</h3>
-      <div className="space-y-2 print:text-xs print:leading-tight print:space-y-1">
+    <div className="card mt-6">
+      <h3 className="text-lg font-semibold mb-2">NOTAMs</h3>
+      <div className="space-y-2">
         {notams.length === 0 ? (
           <div className="text-gray-500 dark:text-gray-400">No NOTAMs found.</div>
         ) : (
-          notams.map((notam: any, idx: number) => {
-            return (
-              <div key={idx} className="bg-gray-50 dark:bg-gray-900 rounded p-2 border border-gray-200 dark:border-gray-700 print:p-1 print:rounded-none print:border-none">
-                <div className="font-mono whitespace-pre-wrap break-words print:text-xs print:leading-tight">
-                  {notam.text}
-                </div>
+          notams.map((notam: any, idx: number) => (
+            <div key={idx} className="bg-gray-50 dark:bg-gray-900 rounded p-2 border border-gray-200 dark:border-gray-700">
+              <div className="font-mono whitespace-pre-wrap break-words">
+                {typeof notam === 'string' ? notam : notam.raw || notam.text || JSON.stringify(notam)}
               </div>
-            );
-          })
+            </div>
+          ))
         )}
       </div>
     </div>
