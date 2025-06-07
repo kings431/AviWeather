@@ -30,7 +30,7 @@ export default function NotamDisplay({ icao }: NotamDisplayProps) {
         const data = await response.json();
         
         if (isMounted) {
-          setNotams(data?.data || []);
+          setNotams(data || []);
         }
       } catch (err) {
         if (isMounted) {
