@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Notam } from '../types';
-import { useQuery } from 'react-query';
-import axios from 'axios';
 
 interface NotamDisplayProps {
   icao: string;
 }
 
-const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
+export default function NotamDisplay({ icao }: NotamDisplayProps) {
   const [notams, setNotams] = useState<Notam[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,4 +115,4 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
       </div>
     </div>
   );
-};
+}
