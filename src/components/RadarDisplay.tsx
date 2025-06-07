@@ -4,30 +4,43 @@ interface RadarDisplayProps {
   icao: string;
 }
 
+type RadarType = 'echotop' | 'rain' | 'snow';
+
+const RADAR_LABELS: Record<RadarType, string> = {
+  echotop: 'ECHOTOP',
+  rain: 'CAPPI (RAIN)',
+  snow: 'CAPPI (SNOW)',
+};
+
 const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   const [frames, setFrames] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [frameIdx, setFrameIdx] = useState(0);
+  const [radarType, setRadarType] = useState<RadarType>('echotop');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/radar?icao=${icao}`)
+    setFrames([]);
+    fetch(`/api/radar?icao=${icao}&type=${radarType}`)
       .then(res => res.json())
       .then(data => {
-        // Flatten the nested frames/images structure from the API
+        // Flatten all frames from all returned radar products
         const flatFrames: any[] = [];
-        (data.frames || []).forEach((outerFrame: any) => {
-          (outerFrame.frames || []).forEach((innerFrame: any) => {
-            (innerFrame.images || []).forEach((img: any) => {
-              flatFrames.push({
-                imageId: img.id,
-                validTime: innerFrame.sv,
-                endTime: innerFrame.ev,
-                created: img.created,
-                imageUrl: `/api/radar/image?id=${img.id}`
+        (data.frames || []).forEach((product: any) => {
+          (product.frames || []).forEach((outerFrame: any) => {
+            (outerFrame.frames || []).forEach((innerFrame: any) => {
+              (innerFrame.images || []).forEach((img: any) => {
+                flatFrames.push({
+                  imageId: img.id,
+                  validTime: innerFrame.sv,
+                  endTime: innerFrame.ev,
+                  created: img.created,
+                  imageUrl: `/api/radar/image?id=${img.id}`,
+                  location: product.location,
+                });
               });
             });
           });
@@ -41,7 +54,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
         setLoading(false);
       });
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [icao]);
+  }, [icao, radarType]);
 
   useEffect(() => {
     if (frames.length > 1) {
@@ -61,6 +74,17 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   return (
     <div className="card mt-6 print:contents">
       <h3 className="text-lg font-semibold mb-2 print:hidden">Radar</h3>
+      <div className="flex gap-2 mb-2 print:hidden">
+        {(['echotop', 'rain', 'snow'] as RadarType[]).map(type => (
+          <button
+            key={type}
+            className={`px-3 py-1 rounded ${radarType === type ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
+            onClick={() => setRadarType(type)}
+          >
+            {RADAR_LABELS[type]}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-col items-center print:grid print:grid-cols-1 print:gap-2 print:items-start print:justify-start">
         {frames.length > 0 ? (
           <img
