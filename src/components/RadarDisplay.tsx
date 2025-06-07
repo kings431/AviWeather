@@ -18,11 +18,25 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
     fetch(`/api/radar?icao=${icao}`)
       .then(res => res.json())
       .then(data => {
-        setFrames(data.frames || []);
-        setFrameIdx((data.frames?.length || 1) - 1); // default to latest
+        // Flatten the nested frames/images structure from the API
+        const flatFrames: any[] = [];
+        (data.frames || []).forEach((outerFrame: any) => {
+          (outerFrame.frames || []).forEach((innerFrame: any) => {
+            (innerFrame.images || []).forEach((img: any) => {
+              flatFrames.push({
+                imageId: img.id,
+                validTime: innerFrame.sv,
+                endTime: innerFrame.ev,
+                created: img.created
+              });
+            });
+          });
+        });
+        setFrames(flatFrames);
+        setFrameIdx((flatFrames.length || 1) - 1); // default to latest
         setLoading(false);
       })
-      .catch(err => {
+      .catch(() => {
         setError('Failed to load radar images');
         setLoading(false);
       });
@@ -80,4 +94,4 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   );
 };
 
-export default RadarDisplay; 
+export default RadarDisplay;
