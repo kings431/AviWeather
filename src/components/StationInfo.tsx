@@ -1,7 +1,9 @@
 import React from 'react';
-import { MapPin, Star, StarOff, Navigation } from 'lucide-react';
+import { MapPin, Star, StarOff } from 'lucide-react';
 import { Station } from '../types';
 import useStore from '../store';
+import tzlookup from 'tz-lookup';
+import { DateTime } from 'luxon';
 
 interface StationInfoProps {
   station: Station;
@@ -19,34 +21,22 @@ const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
     }
   };
 
-  const formatCoordinates = () => {
-    if (!station.latitude || !station.longitude) return 'Coordinates not available';
-    
-    const latDir = station.latitude >= 0 ? 'N' : 'S';
-    const lonDir = station.longitude >= 0 ? 'E' : 'W';
-    
-    const latAbs = Math.abs(station.latitude);
-    const lonAbs = Math.abs(station.longitude);
-    
-    return `${latAbs.toFixed(4)}° ${latDir}, ${lonAbs.toFixed(4)}° ${lonDir}`;
-  };
-  
-  // Helper to get local time in military (24h) format
+  // Helper to get local time in military (24h) format, using coordinates for timezone
   const getLocalTime = () => {
     if (!station.latitude || !station.longitude) return 'N/A';
     try {
-      const now = new Date();
-      // Fallback: just use browser local time
-      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      const tz = tzlookup(station.latitude, station.longitude);
+      return DateTime.now().setZone(tz).toFormat('HH:mm:ss');
     } catch {
-      return 'N/A';
+      // fallback: browser local time
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
     }
   };
 
-  // Helper to get Zulu (UTC) time
+  // Helper to get Zulu (UTC) time with seconds
   const getZuluTime = () => {
     const now = new Date();
-    return now.toISOString().slice(11, 16).replace(':', '') + 'Z';
+    return now.toISOString().slice(11, 19).replace(/:/g, '') + 'Z';
   };
 
   return (
