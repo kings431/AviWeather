@@ -38,7 +38,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
                   validTime: innerFrame.sv,
                   endTime: innerFrame.ev,
                   created: img.created,
-                  imageUrl: `/api/radar/image?id=${img.id}`,
+                  imageUrl: `https://plan.navcanada.ca/weather/images/${img.id}.image`,
                   location: product.location,
                 });
               });
