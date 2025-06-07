@@ -23,36 +23,31 @@ const WeatherCameras: React.FC<WeatherCamerasProps> = ({ icao }) => {
   const [enlarged, setEnlarged] = useState<string | null>(null);
 
   if (isCanada) {
-    // Determine if all directions failed
-    const allFailed = wxcamDirections.every((dir) => failed[dir.key]);
     return (
       <div className="card mt-6 print:contents">
-        <h3 className="text-lg font-semibold mb-2 print:hidden">Weather Cameras</h3>
-        {allFailed ? (
-          <div className="text-gray-500 text-sm">No weathercams found for this airport.</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
-            {wxcamDirections.map((dir) => {
-              if (failed[dir.key]) return null;
-              const url = `https://www.metcam.navcanada.ca/dawc_images/wxcam/${upperIcao}/${upperIcao}_${dir.key}-full-e.jpeg`;
-              return (
-                <div key={dir.key} className="flex flex-col items-center mb-6 print:mb-2">
-                  <span className="font-semibold mb-2 text-center print:text-xs">{dir.label}</span>
-                  <img
-                    src={url}
-                    alt={`${upperIcao} ${dir.label}`}
-                    className="rounded shadow-md max-w-xs print:max-w-[200px] print:shadow-none print:rounded-none"
-                    loading="lazy"
-                    onClick={() => setEnlarged(url)}
-                    onError={() => {
-                      setFailed((f) => ({ ...f, [dir.key]: true }));
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <h3 className="text-lg font-semibold mb-2 print:text-base print:font-semibold">Weather Cameras</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
+          {wxcamDirections.map((dir) => {
+            if (failed[dir.key]) return null;
+            const url = `https://www.metcam.navcanada.ca/dawc_images/wxcam/${upperIcao}/${upperIcao}_${dir.key}-full-e.jpeg`;
+            return (
+              <div key={dir.key} className="flex flex-col items-center mb-6 print:mb-2">
+                <span className="font-semibold mb-2 text-center print:text-xs">{dir.label}</span>
+                <img
+                  src={url}
+                  alt={`${upperIcao} ${dir.label}`}
+                  className="rounded shadow-md max-w-xs w-full h-auto print:max-w-[200px] print:shadow-none print:rounded-none print:w-auto print:h-auto"
+                  style={{ objectFit: 'contain' }}
+                  loading="lazy"
+                  onClick={() => setEnlarged(url)}
+                  onError={() => {
+                    setFailed((f) => ({ ...f, [dir.key]: true }));
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
         <div className="mt-4 text-sm text-gray-600 print:text-xs print:mt-2">
           Source: <a href={`https://www.metcam.navcanada.ca/lb/cameraSite.jsp?lang=e&id=${upperIcao}`} target="_blank" rel="noopener noreferrer" className="underline">NAV CANADA WxCam</a>
         </div>
