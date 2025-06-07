@@ -51,7 +51,7 @@ function formatMetarTime(metarTime: string): string {
   return date.toUTCString().replace(':00 GMT', 'Z');
 }
 
-const METAR_CHOICES = [2, 3, 6];
+const METAR_CHOICES = [2, 3, 4, 5, 6];
 
 const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
   const [metarChoice, setMetarChoice] = useState(2);
@@ -64,8 +64,15 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
       .then(data => setMetars(data.metars || []));
   }, [station]);
 
-  // Exclude the latest METAR (already shown in detail above)
-  const previousMetars = metars.filter(m => m.text !== data.raw);
+  // Exclude the latest METAR (already shown in detail above) and filter by selected hour range
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - metarChoice * 60 * 60 * 1000);
+  const previousMetars = metars
+    .filter(m => m.text !== data.raw)
+    .filter(m => {
+      const metarTime = m.time || m.startValidity;
+      return metarTime && new Date(metarTime) >= cutoff;
+    });
 
   return (
     <div className="card space-y-4 animate-fade-in print:hidden">
