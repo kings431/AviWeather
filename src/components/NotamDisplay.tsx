@@ -79,11 +79,16 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
       {notams.map((notam) => {
         // Extract the raw NOTAM text from the JSON string
         let raw = '';
-        try {
-          const parsed = JSON.parse((notam as any).text || '{}');
-          raw = parsed.raw || notam.description || '';
-        } catch {
-          raw = notam.description || '';
+        const text = (notam as any).text;
+        if (typeof text === 'string' && text.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(text);
+            raw = parsed.raw || notam.description || '';
+          } catch {
+            raw = notam.description || text || '';
+          }
+        } else {
+          raw = text || notam.description || '';
         }
         // Split into lines
         const lines = raw.split(/\r?\n/);
