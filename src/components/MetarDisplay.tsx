@@ -10,7 +10,7 @@ interface MetarDisplayProps {
 const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
   let bgColor = 'bg-success-100 text-success-800';
   let label = 'VFR';
-  
+
   switch (category) {
     case 'VFR':
       bgColor = 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200';
@@ -29,7 +29,7 @@ const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
       label = 'LIFR';
       break;
   }
-  
+
   return (
     <span className={`text-xs font-medium px-2.5 py-0.5 rounded ${bgColor}`}>
       {label}
@@ -51,7 +51,7 @@ function formatMetarTime(metarTime: string): string {
   return date.toUTCString().replace(':00 GMT', 'Z');
 }
 
-const METAR_CHOICES = [2, 3, 4, 5, 6];
+const METAR_CHOICES = [2, 3, 6];
 
 const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
   const [metarChoice, setMetarChoice] = useState(2);
@@ -59,10 +59,10 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
   const station = icao || data.station;
 
   useEffect(() => {
-    fetch(`/api/metar?icao=${station}&metar_choice=${metarChoice}`)
+    fetch(`/api/metar?icao=${station}`)
       .then(res => res.json())
       .then(data => setMetars(data.metars || []));
-  }, [station, metarChoice]);
+  }, [station]);
 
   // Exclude the latest METAR (already shown in detail above)
   const previousMetars = metars.filter(m => m.text !== data.raw);
@@ -213,5 +213,3 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
     </div>
   );
 };
-
-export default MetarDisplay;
