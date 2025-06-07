@@ -4,12 +4,14 @@ import { Station } from '../types';
 import useStore from '../store';
 import tzlookup from 'tz-lookup';
 import { DateTime } from 'luxon';
+import UpdateIndicator from './UpdateIndicator';
 
 interface StationInfoProps {
   station: Station;
+  lastUpdated?: number;
 }
 
-const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
+const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
   const { favorites, addToFavorites, removeFromFavorites } = useStore();
   const isFavorite = favorites.some(f => f.icao === station.icao);
   
@@ -77,6 +79,7 @@ const StationInfo: React.FC<StationInfoProps> = ({ station }) => {
         <div className="flex flex-col items-end gap-1">
           <div className="text-xs text-gray-500 dark:text-gray-400">Local Time (24h): <span className="font-mono">{getLocalTime()}</span></div>
           <div className="text-xs text-gray-500 dark:text-gray-400">Zulu Time: <span className="font-mono">{getZuluTime()}</span></div>
+          {lastUpdated !== undefined && <UpdateIndicator lastUpdated={lastUpdated} />}
         </div>
         
         <button

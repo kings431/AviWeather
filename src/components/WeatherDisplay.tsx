@@ -40,12 +40,12 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
         {/* NOTAMs will be handled in NotamDisplay with a print block */}
       </div>
       {/* Normal UI (hidden in print) */}
-      <UpdateIndicator lastUpdated={lastUpdated} />
+      {/* <UpdateIndicator lastUpdated={lastUpdated} /> */}
       <div className="flex justify-between items-start">
         <h2 className="text-2xl font-semibold">Weather Information</h2>
         <RefreshButton stationId={station.icao} />
       </div>
-      <StationInfo station={station} />
+      <StationInfo station={station} lastUpdated={lastUpdated} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {weatherData.metar && (
           <MetarDisplay data={weatherData.metar} icao={station.icao} />
