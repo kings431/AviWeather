@@ -26,22 +26,22 @@ const WeatherCameras: React.FC<WeatherCamerasProps> = ({ icao }) => {
     // Determine if all directions failed
     const allFailed = wxcamDirections.every((dir) => failed[dir.key]);
     return (
-      <div className="card mt-4">
-        <h3 className="text-lg font-semibold mb-2">Weather Cameras</h3>
+      <div className="card mt-6 print:contents">
+        <h3 className="text-lg font-semibold mb-2 print:hidden">Weather Cameras</h3>
         {allFailed ? (
           <div className="text-gray-500 text-sm">No weathercams found for this airport.</div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
             {wxcamDirections.map((dir) => {
               if (failed[dir.key]) return null;
               const url = `https://www.metcam.navcanada.ca/dawc_images/wxcam/${upperIcao}/${upperIcao}_${dir.key}-full-e.jpeg`;
               return (
-                <div key={dir.key} className="flex flex-col items-center">
-                  <span className="font-medium text-xs mb-1">{dir.label}</span>
+                <div key={dir.key} className="flex flex-col items-center mb-6 print:mb-2">
+                  <span className="font-semibold mb-2 text-center print:text-xs">{dir.label}</span>
                   <img
                     src={url}
                     alt={`${upperIcao} ${dir.label}`}
-                    className="rounded border border-gray-200 dark:border-gray-700 w-full max-w-[220px] h-auto cursor-zoom-in"
+                    className="rounded shadow-md max-w-xs print:max-w-[200px] print:shadow-none print:rounded-none"
                     loading="lazy"
                     onClick={() => setEnlarged(url)}
                     onError={() => {
@@ -53,7 +53,7 @@ const WeatherCameras: React.FC<WeatherCamerasProps> = ({ icao }) => {
             })}
           </div>
         )}
-        <div className="text-xs text-gray-500 mt-2">
+        <div className="mt-4 text-sm text-gray-600 print:text-xs print:mt-2">
           Source: <a href={`https://www.metcam.navcanada.ca/lb/cameraSite.jsp?lang=e&id=${upperIcao}`} target="_blank" rel="noopener noreferrer" className="underline">NAV CANADA WxCam</a>
         </div>
         {/* Modal for enlarged image */}
@@ -104,4 +104,4 @@ const WeatherCameras: React.FC<WeatherCamerasProps> = ({ icao }) => {
   );
 };
 
-export default WeatherCameras; 
+export default WeatherCameras;
