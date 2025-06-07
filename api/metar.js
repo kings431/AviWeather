@@ -18,7 +18,9 @@ export default async function handler(req, res) {
   try {
     const url = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&alpha=metar&metar_choice=${metar_choice}&_=${Date.now()}`;
     const response = await axios.get(url, { timeout: 5000 });
-    res.json({ metars: response.data.data || [] });
+    const metars = response.data.data || [];
+    const latestMetar = metars.length > 0 ? metars[0] : null;
+    res.json({ latestMetar, metars });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch METARs', details: err instanceof Error ? err.message : String(err) });
   }

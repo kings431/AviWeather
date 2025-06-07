@@ -213,3 +213,5 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
     </div>
   );
 };
+
+export default MetarDisplay;
