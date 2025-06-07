@@ -1,15 +1,5 @@
 import axios from 'axios';
 
-let airportsCache = null;
-
-async function loadAirports() {
-  if (!airportsCache) {
-    const response = await axios.get('https://ourairports.com/airports.json');
-    airportsCache = response.data;
-  }
-  return airportsCache;
-}
-
 export default async function handler(req, res) {
   const { icao } = req.query;
   if (!icao) {
@@ -17,7 +7,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const airports = await loadAirports();
+    // Use OurAirports API with bounding box and airport param for best match
+    const response = await axios.get(`https://ourairports.com/airports.json?airport=${icao.toUpperCase()}&limit=1`);
+    const airports = response.data;
+    // Find the airport by ICAO code (ident)
     const airport = airports.find((a) => a.ident && a.ident.toUpperCase() === icao.toUpperCase());
     if (!airport) {
       return res.status(404).json({ error: 'Airport not found' });
