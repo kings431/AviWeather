@@ -10,37 +10,26 @@ export default async function handler(req, res) {
   // Log the requested image ID
   console.log('Radar image requested:', id);
 
-  const baseUrl = `https://plan.navcanada.ca/weather/api/alpha/image/${id}`;
+  // Updated NavCanada image URL format
+  const baseUrl = `https://plan.navcanada.ca/weather/api/alpha/image/${id}/data`;
 
   try {
-    // Try jpeg first
-    try {
-      const imgRes = await axios.get(`${baseUrl}.jpeg`, {
-        responseType: 'stream',
-        timeout: 7000,
-      });
-      res.setHeader('Content-Type', 'image/jpeg');
-      imgRes.data.pipe(res);
-      return;
-    } catch (e) {
-      // Try png if jpeg not found
-      try {
-        const imgRes = await axios.get(`${baseUrl}.png`, {
-          responseType: 'stream',
-          timeout: 7000,
-        });
-        res.setHeader('Content-Type', 'image/png');
-        imgRes.data.pipe(res);
-        return;
-      } catch (pngErr) {
-        // Log both errors
-        console.error('Radar image not found:', id, 'jpeg error:', e?.message, 'png error:', pngErr?.message);
-        res.status(404).json({ error: 'Radar image not found', id, jpegError: e?.message, pngError: pngErr?.message });
-        return;
-      }
-    }
+    const imgRes = await axios.get(baseUrl, {
+      responseType: 'stream',
+      timeout: 7000,
+    });
+    
+    // Set appropriate content type based on response headers
+    const contentType = imgRes.headers['content-type'] || 'image/png';
+    res.setHeader('Content-Type', contentType);
+    imgRes.data.pipe(res);
   } catch (error) {
-    console.error('Radar image fetch error:', error);
-    res.status(404).json({ error: 'Radar image not found', details: error?.message });
+    console.error('Radar image fetch error:', error?.message);
+    res.status(404).json({ 
+      error: 'Radar image not found', 
+      id,
+      details: error?.message,
+      response: error?.response?.data
+    });
   }
 }
