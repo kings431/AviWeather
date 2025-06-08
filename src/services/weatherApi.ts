@@ -547,4 +547,23 @@ export const fetchOpenAipAirport = async (icao: string) => {
   }
 };
 
+export const fetchNearestAirports = async (lat: number, lon: number, excludeIcao?: string) => {
+  try {
+    // Use a reasonable radius (e.g., 50km) for nearby airports
+    const response = await axios.get(`/api/openaip?lat=${lat}&lon=${lon}&radius=50`);
+    if (response.data && response.data.items && response.data.items.length > 0) {
+      // Exclude the current airport by ICAO if provided
+      let airports = response.data.items;
+      if (excludeIcao) {
+        airports = airports.filter((apt: any) => apt.icao !== excludeIcao);
+      }
+      // Sort by distance if available, otherwise just take the first 10
+      return airports.slice(0, 10);
+    }
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
 export { parseMetar };

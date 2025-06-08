@@ -8,7 +8,7 @@ import NotamDisplay from './components/NotamDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import useStore from './store';
-import { fetchWeatherData, fetchStationData, fetchOpenAipAirport } from './services/weatherApi';
+import { fetchWeatherData, fetchStationData, fetchOpenAipAirport, fetchNearestAirports } from './services/weatherApi';
 import RadarDisplay from './components/RadarDisplay';
 import { Plane } from 'lucide-react';
 import WeatherCameras from './components/WeatherCameras';
@@ -82,6 +82,7 @@ function App() {
     const [airport, setAirport] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const [nearestAirports, setNearestAirports] = React.useState<any[]>([]);
 
     useEffect(() => {
       if (!icao) return;
@@ -97,6 +98,17 @@ function App() {
         });
     }, [icao]);
 
+    // Fetch nearest airports after airport is loaded
+    React.useEffect(() => {
+      if (airport?.geometry?.coordinates) {
+        fetchNearestAirports(
+          airport.geometry.coordinates[1],
+          airport.geometry.coordinates[0],
+          airport.icao
+        ).then(setNearestAirports);
+      }
+    }, [airport]);
+
     const position: LatLngExpression = airport?.geometry?.coordinates
       ? [airport.geometry.coordinates[1], airport.geometry.coordinates[0]]
       : [49.91, -97.24];
@@ -108,6 +120,33 @@ function App() {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     };
+
+    // Helper: Haversine formula for distance (km)
+    function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
+      const R = 6371; // km
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+    // Helper: Bearing
+    function bearing(lat1: number, lon1: number, lat2: number, lon2: number) {
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const y = Math.sin(dLon) * Math.cos((lat2 * Math.PI) / 180);
+      const x =
+        Math.cos((lat1 * Math.PI) / 180) * Math.sin((lat2 * Math.PI) / 180) -
+        Math.sin((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.cos(dLon);
+      let brng = (Math.atan2(y, x) * 180) / Math.PI;
+      brng = (brng + 360) % 360;
+      return Math.round(brng);
+    }
 
     return (
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl" style={{ scrollBehavior: 'smooth' }}>
@@ -264,6 +303,90 @@ function App() {
                   </div>
                 ) : (
                   <div className="text-gray-500">No services data available.</div>
+                )}
+              </div>
+            </section>
+            {/* Nearest Airports Section */}
+            <section id="nearest-airports" className="scroll-mt-24 mb-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-2">Nearest Airports</h3>
+                {nearestAirports.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-800">
+                          <th className="px-3 py-2 text-left">Name</th>
+                          <th className="px-3 py-2 text-left">Runway</th>
+                          <th className="px-3 py-2 text-left">Frequency</th>
+                          <th className="px-3 py-2 text-left">Bearing / Distance</th>
+                          <th className="px-3 py-2 text-left">View</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {nearestAirports.map((apt: any, idx: number) => {
+                          // Name: ICAO bolded if present
+                          const name = apt.icao ? <b>{apt.icao}</b> + ' ' + (apt.name || '') : (apt.name || '-');
+                          // Runway: show longest or summary
+                          let runway = '-';
+                          if (apt.runways && apt.runways.length > 0) {
+                            const longest = apt.runways.reduce((a: any, b: any) => {
+                              const aLen = a.dimension?.length?.value || 0;
+                              const bLen = b.dimension?.length?.value || 0;
+                              return aLen > bLen ? a : b;
+                            });
+                            if (longest.dimension?.length?.value && longest.dimension?.width?.value) {
+                              runway = `${longest.dimension.length.value} m x ${longest.dimension.width.value} m`;
+                              if (longest.surface && typeof longest.surface.mainComposite === 'number') {
+                                runway += ' ' + (surfaceTypeMap[longest.surface.mainComposite] || '');
+                              }
+                            }
+                          }
+                          // Frequency: show first or primary
+                          let freq = '-';
+                          if (apt.frequencies && apt.frequencies.length > 0) {
+                            const primary = apt.frequencies.find((f: any) => f.primary) || apt.frequencies[0];
+                            freq = primary.value ? `${primary.value} MHz` : '-';
+                          }
+                          // Bearing/Distance
+                          let bearingDist = '-';
+                          if (airport?.geometry?.coordinates && apt.geometry?.coordinates) {
+                            const dist = haversine(
+                              airport.geometry.coordinates[1],
+                              airport.geometry.coordinates[0],
+                              apt.geometry.coordinates[1],
+                              apt.geometry.coordinates[0]
+                            );
+                            const brng = bearing(
+                              airport.geometry.coordinates[1],
+                              airport.geometry.coordinates[0],
+                              apt.geometry.coordinates[1],
+                              apt.geometry.coordinates[0]
+                            );
+                            bearingDist = `${brng}°/ ${dist.toFixed(2)} km`;
+                          }
+                          return (
+                            <tr key={apt.icao || apt._id || idx} className="border-t border-gray-200 dark:border-gray-700">
+                              <td className="px-3 py-2">{name}</td>
+                              <td className="px-3 py-2">{runway}</td>
+                              <td className="px-3 py-2">{freq}</td>
+                              <td className="px-3 py-2">{bearingDist}</td>
+                              <td className="px-3 py-2">
+                                {apt.icao ? (
+                                  <button
+                                    className="text-blue-600 hover:underline"
+                                    onClick={() => window.location.href = `/airport/${apt.icao}`}
+                                  >
+                                    View
+                                  </button>
+                                ) : '-'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">No nearby airports found.</div>
                 )}
               </div>
             </section>
