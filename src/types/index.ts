@@ -84,9 +84,54 @@ export interface TafData {
   endValidity?: string;
 }
 
+export interface SigmetData {
+  type: 'sigmet';
+  pk: string;
+  location: string;
+  startValidity: string;
+  endValidity: string;
+  text: string;
+  hasError: boolean;
+  position: {
+    pointReference: string;
+    radialDistance: number;
+  };
+}
+
+export interface PirepData {
+  type: 'pirep';
+  pk: string;
+  location: string;
+  startValidity: string;
+  endValidity: string | null;
+  text: string;
+  hasError: boolean;
+  position: {
+    pointReference: string;
+    radialDistance: number;
+  };
+}
+
+export interface AirmetData {
+  type: 'airmet';
+  pk: string;
+  location: string;
+  startValidity: string;
+  endValidity: string;
+  text: string;
+  hasError: boolean;
+  position: {
+    pointReference: string;
+    radialDistance: number;
+  };
+}
+
 export type WeatherData = {
   metar?: MetarData;
   taf?: TafData;
+  sigmet?: SigmetData[];
+  airmet?: AirmetData[];
+  pirep?: PirepData[];
   error?: string;
   lastUpdated?: number;
 };

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MetarData, TafData, Station, WeatherData, TafPeriod } from '../types';
+import { MetarData, TafData, Station, WeatherData, TafPeriod, SigmetData, AirmetData, PirepData } from '../types';
 
 // API endpoints with CORS proxy
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
@@ -415,6 +415,30 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
     const tafStart = tafObj.startValidity || '';
     const tafEnd = tafObj.endValidity || '';
 
+    // Fetch SIGMETs, AIRMETs, and PIREPs for Canadian airports
+    let sigmets: SigmetData[] = [];
+    let airmets: AirmetData[] = [];
+    let pireps: PirepData[] = [];
+
+    if (icao.toUpperCase().startsWith('C')) {
+      try {
+        // Fetch SIGMETs
+        const sigmetRes = await axios.get(`/api/weather-reports?icao=${icao}&type=sigmet`);
+        sigmets = sigmetRes.data || [];
+
+        // Fetch AIRMETs
+        const airmetRes = await axios.get(`/api/weather-reports?icao=${icao}&type=airmet`);
+        airmets = airmetRes.data || [];
+
+        // Fetch PIREPs
+        const pirepRes = await axios.get(`/api/weather-reports?icao=${icao}&type=pirep`);
+        pireps = pirepRes.data || [];
+      } catch (error) {
+        console.error('Error fetching weather reports:', error);
+        // Don't throw error, just log it and continue
+      }
+    }
+
     // Strip only 'METAR ' prefix from NavCanada METAR text, keep station code
     const originalMetarText = latestMetar?.text || '';
     const metarText = originalMetarText.replace(/^METAR\s+/, '').replace(/=$/, '');
@@ -436,7 +460,10 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
 
     const weatherData: WeatherData = {
       metar: parsedMetar,
-      taf: parsedTaf
+      taf: parsedTaf,
+      sigmet: sigmets,
+      airmet: airmets,
+      pirep: pireps
     };
 
     if (!weatherData.metar && !weatherData.taf) {

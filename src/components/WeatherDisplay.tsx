@@ -5,6 +5,7 @@ import TafDisplay from './TafDisplay';
 import StationInfo from './StationInfo';
 import RefreshButton from './RefreshButton';
 import UpdateIndicator from './UpdateIndicator';
+import WeatherReports from './WeatherReports';
 
 interface WeatherDisplayProps {
   weatherData: WeatherData;
@@ -54,14 +55,20 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
         </div>
       </div>
       <StationInfo station={station} lastUpdated={lastUpdated} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {weatherData.metar && (
-          <MetarDisplay data={weatherData.metar} icao={station.icao} />
-        )}
-        {weatherData.taf && (
-          <TafDisplay data={weatherData.taf} />
-        )}
-      </div>
+      
+      {/* Weather Reports (SIGMETs, AIRMETs, PIREPs) */}
+      <WeatherReports
+        sigmets={weatherData.sigmet}
+        airmets={weatherData.airmet}
+        pireps={weatherData.pirep}
+      />
+      
+      {weatherData.metar && (
+        <MetarDisplay data={weatherData.metar} icao={station.icao} />
+      )}
+      {weatherData.taf && (
+        <TafDisplay data={weatherData.taf} />
+      )}
       {(!weatherData.metar && !weatherData.taf) && weatherData.error && (
         <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
           <p className="text-gray-500 dark:text-gray-400">{weatherData.error}</p>
