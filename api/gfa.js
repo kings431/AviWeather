@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const querySchema = z.object({
   station: z.string().length(4).optional(),
-  type: z.enum(['CLDWX', 'SIGWX', 'ICING', 'TURB']).optional(),
+  type: z.enum(['CLDWX', 'TURBC']).optional(),
 });
 
 export default async function handler(req, res) {
