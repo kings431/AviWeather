@@ -1,11 +1,11 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  const { icao } = req.query;
+  const { icao, lat, lon, radius } = req.query;
   const apiKey = process.env.OPENAIP_API_KEY;
 
-  if (!icao) {
-    return res.status(400).json({ error: 'Missing ICAO code' });
+  if (!icao && (!lat || !lon)) {
+    return res.status(400).json({ error: 'Missing ICAO code or lat/lon' });
   }
 
   try {
@@ -14,10 +14,16 @@ export default async function handler(req, res) {
       'x-openaip-api-key': apiKey,
     };
 
-    const response = await axios.get(
-      `https://api.core.openaip.net/api/airports?search=${icao.toUpperCase()}`,
-      { headers }
-    );
+    let url;
+    if (icao) {
+      url = `https://api.core.openaip.net/api/airports?search=${icao.toUpperCase()}`;
+    } else {
+      // Use lat/lon search for nearest airports
+      url = `https://api.core.openaip.net/api/airports?lat=${lat}&lon=${lon}`;
+      if (radius) url += `&radius=${radius}`;
+    }
+
+    const response = await axios.get(url, { headers });
 
     if (!response.data.items || response.data.items.length === 0) {
       return res.status(404).json({ error: 'Airport not found' });
