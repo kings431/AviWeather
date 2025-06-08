@@ -5,6 +5,7 @@ import { Wind, Droplets, Thermometer, Gauge } from 'lucide-react';
 interface MetarDisplayProps {
   data: MetarData;
   icao?: string;
+  hideRaw?: boolean;
 }
 
 const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
@@ -53,7 +54,7 @@ function formatMetarTime(metarTime: string): string {
 
 const METAR_CHOICES = [2, 3, 6];
 
-const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
+const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false }) => {
   const [metarChoice, setMetarChoice] = useState(2);
   const [metars, setMetars] = useState<any[]>([]);
   const station = icao || data.station;
@@ -92,9 +93,11 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao }) => {
           <div className="flex justify-between items-start">
             <FlightCategoryBadge category={data.flight_category} />
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
-            {data.raw}
-          </div>
+          {!hideRaw && (
+            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
+              {data.raw}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Wind Information */}
             <div className="flex items-start space-x-3">

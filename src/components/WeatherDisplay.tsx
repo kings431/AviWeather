@@ -128,7 +128,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
               {weatherData.metar.raw}
             </div>
             {showMetar ? (
-              <MetarDisplay data={weatherData.metar} icao={station.icao} />
+              <MetarDisplay data={weatherData.metar} icao={station.icao} hideRaw={true} />
             ) : (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -169,7 +169,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
               {weatherData.taf.raw}
             </div>
             {showTaf && (
-              <TafDisplay data={weatherData.taf} />
+              <TafDisplay data={weatherData.taf} hideRaw={true} />
             )}
           </div>
         )}

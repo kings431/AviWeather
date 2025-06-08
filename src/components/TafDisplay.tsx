@@ -4,6 +4,7 @@ import { Calendar, Clock } from 'lucide-react';
 
 interface TafDisplayProps {
   data: TafData;
+  hideRaw?: boolean;
 }
 
 const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
@@ -221,7 +222,7 @@ function formatTaf(taf: string): string {
   return lines.join('\n');
 }
 
-const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
+const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false }) => {
   // Support both legacy (forecast) and new (periods) keys for compatibility
   const periods = (data && (data.periods || (data as any).forecast)) || [];
   const issued = (data && (data.issue_time || (data as any).issued)) || '';
@@ -239,7 +240,13 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
   }
 
   return (
-    <div className="card space-y-4 animate-fade-in print:hidden">
+    <div className="space-y-4 animate-fade-in print:hidden">
+      {/* Raw TAF at the top, unless hideRaw is true */}
+      {!hideRaw && (
+        <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
+          {data.raw}
+        </div>
+      )}
       <div>
         <h3 className="text-xl font-medium">TAF</h3>
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
