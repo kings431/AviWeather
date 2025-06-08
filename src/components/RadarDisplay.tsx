@@ -20,7 +20,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   const [frameIdx, setFrameIdx] = useState(0);
   const [radarType, setRadarType] = useState<RadarType>('echotop');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [prefetchedImages, setPrefetchedImages] = useState<(string | null)[]>([]);
 
   useEffect(() => {
