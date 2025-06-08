@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
 import Header from './components/Header';
 import FavoritesBar from './components/FavoritesBar';
@@ -8,11 +8,15 @@ import NotamDisplay from './components/NotamDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import useStore from './store';
-import { fetchWeatherData, fetchStationData } from './services/weatherApi';
+import { fetchWeatherData, fetchStationData, fetchOpenAipAirport } from './services/weatherApi';
 import RadarDisplay from './components/RadarDisplay';
 import { Plane } from 'lucide-react';
 import WeatherCameras from './components/WeatherCameras';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Routes, Route, useParams } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import type { LatLngExpression } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 function App() {
   const { 
@@ -58,85 +62,214 @@ function App() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showNotams, setShowNotams] = useState(true);
 
+  // Placeholder for the new detailed airport info page
+  function AirportDetailsPage() {
+    const { icao } = useParams();
+    const [airport, setAirport] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+
+    useEffect(() => {
+      if (!icao) return;
+      setLoading(true);
+      fetchOpenAipAirport(icao)
+        .then(data => {
+          setAirport(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          setError(err.message);
+          setLoading(false);
+        });
+    }, [icao]);
+
+    const position: LatLngExpression = airport?.geometry?.coordinates
+      ? [airport.geometry.coordinates[1], airport.geometry.coordinates[0]]
+      : [49.91, -97.24];
+
+    // Tab scroll handler
+    const handleTabClick = (id: string) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    return (
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl" style={{ scrollBehavior: 'smooth' }}>
+        <h1 className="text-2xl font-bold mb-4">Airport Details</h1>
+        {/* Tabbed navigation */}
+        <nav className="mb-6 border-b border-gray-200 dark:border-gray-700">
+          <ul className="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base font-medium">
+            <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('overview')}>Overview</button></li>
+            <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('runways')}>Runways</button></li>
+            <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('map')}>Map</button></li>
+            {/* Add more tabs as needed */}
+          </ul>
+        </nav>
+        {loading ? (
+          <div className="p-6 text-center">Loading airport information...</div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-600">{error}</div>
+        ) : airport ? (
+          <>
+            {/* Overview Section */}
+            <section id="overview" className="scroll-mt-24">
+              <div className="card mb-6">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold mb-1">{airport.name}</h2>
+                    <div className="text-gray-600 dark:text-gray-400 mb-1">{airport.location?.city}, {airport.location?.country}</div>
+                    <div className="text-sm text-gray-500">ICAO: {airport.icao} {airport.iata && <>| IATA: {airport.iata}</>}</div>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    <div>Coordinates: {position[0].toFixed(4)}, {position[1].toFixed(4)}</div>
+                    <div>Elevation: {airport.elevation?.value} {airport.elevation?.unit}</div>
+                    <div>Timezone: {airport.timezone || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            {/* Runways Section */}
+            <section id="runways" className="scroll-mt-24 mb-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-2">Runways</h3>
+                {airport.runways && airport.runways.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-800">
+                          <th className="px-3 py-2 text-left">Name</th>
+                          <th className="px-3 py-2 text-left">Length</th>
+                          <th className="px-3 py-2 text-left">Width</th>
+                          <th className="px-3 py-2 text-left">Surface</th>
+                          <th className="px-3 py-2 text-left">Lighting</th>
+                          <th className="px-3 py-2 text-left">Heading</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {airport.runways.map((rwy: any, idx: number) => (
+                          <tr key={rwy.name || idx} className="border-t border-gray-200 dark:border-gray-700">
+                            <td className="px-3 py-2 font-mono">{rwy.name || '-'}</td>
+                            <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
+                            <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
+                            <td className="px-3 py-2">{rwy.surface || '-'}</td>
+                            <td className="px-3 py-2">{rwy.lighting ? 'Yes' : 'No'}</td>
+                            <td className="px-3 py-2">{rwy.ends && rwy.ends.length > 0 ? rwy.ends.map((end: any) => end.ident).join(' / ') : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">No runway data available.</div>
+                )}
+              </div>
+            </section>
+            {/* Map Section */}
+            <section id="map" className="scroll-mt-24 mb-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-2">Map</h3>
+                <MapContainer center={position} zoom={13} scrollWheelZoom={true}>
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution="&copy; OpenStreetMap contributors"
+                  />
+                  <Marker position={position}>
+                    <Popup>
+                      {airport.name}
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
+            </section>
+          </>
+        ) : null}
+        <p>Detailed airport information will appear here.</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <Header />
-        
-        <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
-          {/* Remove duplicate Print button here */}
-          <div className="print:hidden">
-            <FavoritesBar />
-          </div>
-          
-          {error && (
-            <div className="mb-4 sm:mb-6">
-              <ErrorMessage 
-                message={error} 
-                onDismiss={clearError} 
-              />
-            </div>
-          )}
-          
-          {isLoading ? (
-            <LoadingSpinner />
-          ) : selectedStations && selectedStations.length > 0 ? (
-            <div className="space-y-6 sm:space-y-12 mb-4 sm:mb-8">
-              {selectedStations.map(station => (
-                <div key={station.icao} className="flex flex-col gap-3 sm:gap-4 w-full">
-                  {weatherData[station.icao] && (
-                    <WeatherDisplay 
-                      weatherData={weatherData[station.icao]}
-                      station={station}
-                      lastUpdated={weatherData[station.icao].lastUpdated}
-                      showNotams={showNotams}
-                      setShowNotams={setShowNotams}
-                    />
-                  )}
-                  {/* Two-column layout for NOTAMs and other sections */}
-                  <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-                    <div className="flex-1">
-                      {showNotams && <NotamDisplay icao={station.icao} />}
-                    </div>
-                    <div className="flex flex-col flex-1 gap-3 sm:gap-4">
-                      <GFADisplay icao={station.icao} />
-                      <RadarDisplay icao={station.icao} />
-                      <WeatherCameras icao={station.icao} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] px-2 sm:px-4">
-              <div className="flex flex-col items-center">
-                <div className="mb-3 sm:mb-4">
-                  <Plane size={40} className="text-primary-500 mx-auto sm:w-12 sm:h-12" />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-center">Welcome to AviWeather</h2>
-                <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto text-base sm:text-lg mb-4 sm:mb-6 text-center px-2">
-                  Search for an airport using its ICAO code to get the latest aviation weather information including <b>METARs</b>, <b>TAFs</b>, and area forecasts.
-                </p>
-                <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg inline-block w-full max-w-md">
-                  <p className="text-lg sm:text-xl font-semibold mb-2">Quick Start</p>
-                  <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-3">Try searching for these popular airports:</p>
-                  <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-                    {shuffledAirports.map(icao => (
-                      <button
-                        key={icao}
-                        className="px-2 sm:px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded text-xs sm:text-sm font-mono transition-colors shadow-sm"
-                        onClick={() => handleQuickStart(icao)}
-                      >
-                        {icao}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+        <Routes>
+          <Route path="/" element={
+            <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
+              {/* Remove duplicate Print button here */}
+              <div className="print:hidden">
+                <FavoritesBar />
               </div>
-            </div>
-          )}
-        </main>
-        
+              {error && (
+                <div className="mb-4 sm:mb-6">
+                  <ErrorMessage 
+                    message={error} 
+                    onDismiss={clearError} 
+                  />
+                </div>
+              )}
+              {isLoading ? (
+                <LoadingSpinner />
+              ) : selectedStations && selectedStations.length > 0 ? (
+                <div className="space-y-6 sm:space-y-12 mb-4 sm:mb-8">
+                  {selectedStations.map(station => (
+                    <div key={station.icao} className="flex flex-col gap-3 sm:gap-4 w-full">
+                      {weatherData[station.icao] && (
+                        <WeatherDisplay 
+                          weatherData={weatherData[station.icao]}
+                          station={station}
+                          lastUpdated={weatherData[station.icao].lastUpdated}
+                          showNotams={showNotams}
+                          setShowNotams={setShowNotams}
+                        />
+                      )}
+                      {/* Two-column layout for NOTAMs and other sections */}
+                      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+                        <div className="flex-1">
+                          {showNotams && <NotamDisplay icao={station.icao} />}
+                        </div>
+                        <div className="flex flex-col flex-1 gap-3 sm:gap-4">
+                          <GFADisplay icao={station.icao} />
+                          <RadarDisplay icao={station.icao} />
+                          <WeatherCameras icao={station.icao} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center min-h-[60vh] px-2 sm:px-4">
+                  <div className="flex flex-col items-center">
+                    <div className="mb-3 sm:mb-4">
+                      <Plane size={40} className="text-primary-500 mx-auto sm:w-12 sm:h-12" />
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-center">Welcome to AviWeather</h2>
+                    <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto text-base sm:text-lg mb-4 sm:mb-6 text-center px-2">
+                      Search for an airport using its ICAO code to get the latest aviation weather information including <b>METARs</b>, <b>TAFs</b>, and area forecasts.
+                    </p>
+                    <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg inline-block w-full max-w-md">
+                      <p className="text-lg sm:text-xl font-semibold mb-2">Quick Start</p>
+                      <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-3">Try searching for these popular airports:</p>
+                      <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                        {shuffledAirports.map(icao => (
+                          <button
+                            key={icao}
+                            className="px-2 sm:px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded text-xs sm:text-sm font-mono transition-colors shadow-sm"
+                            onClick={() => handleQuickStart(icao)}
+                          >
+                            {icao}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </main>
+          } />
+          <Route path="/airport/:icao" element={<AirportDetailsPage />} />
+        </Routes>
         <footer className="bg-white dark:bg-gray-900 shadow-sm border-t border-gray-200 dark:border-gray-800 mt-auto">
           <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
             {/* Disclaimer Modal */}

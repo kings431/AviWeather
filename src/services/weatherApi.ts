@@ -535,4 +535,16 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
   }
 };
 
+export const fetchOpenAipAirport = async (icao: string) => {
+  try {
+    const response = await axios.get(`/api/openaip?icao=${icao}`);
+    if (response.data && response.data.items && response.data.items.length > 0) {
+      return response.data.items[0];
+    }
+    throw new Error('No airport data found');
+  } catch (error) {
+    throw new Error('Failed to fetch OpenAIP airport data');
+  }
+};
+
 export { parseMetar };

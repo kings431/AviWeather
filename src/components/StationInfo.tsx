@@ -5,6 +5,7 @@ import useStore from '../store';
 import tzlookup from 'tz-lookup';
 import { DateTime } from 'luxon';
 import UpdateIndicator from './UpdateIndicator';
+import { useNavigate } from 'react-router-dom';
 
 interface StationInfoProps {
   station: Station;
@@ -14,6 +15,7 @@ interface StationInfoProps {
 const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
   const { favorites, addToFavorites, removeFromFavorites } = useStore();
   const isFavorite = favorites.some(f => f.icao === station.icao);
+  const navigate = useNavigate();
   
   const toggleFavorite = () => {
     if (isFavorite) {
@@ -102,6 +104,14 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
             )}
           </button>
         </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded shadow transition-colors text-sm sm:text-base"
+          onClick={() => navigate(`/airport/${station.icao}`)}
+        >
+          View Full Airport Info
+        </button>
       </div>
     </div>
   );
