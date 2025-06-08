@@ -410,7 +410,10 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
     // Fetch TAF from your own API (server-side proxy to NavCanada)
     const tafResponse = await axios.get(`/api/taf?icao=${icao}`);
     const tafDataArr = tafResponse.data.data || [];
-    const tafText = tafDataArr.length > 0 ? tafDataArr[0].text : '';
+    const tafObj = tafDataArr.length > 0 ? tafDataArr[0] : {};
+    const tafText = tafObj.text || '';
+    const tafStart = tafObj.startValidity || '';
+    const tafEnd = tafObj.endValidity || '';
 
     // Strip only 'METAR ' prefix from NavCanada METAR text, keep station code
     const originalMetarText = latestMetar?.text || '';
@@ -427,9 +430,13 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       parsedMetar = undefined;
     }
 
+    const parsedTaf = tafText && tafText !== 'No TAF available'
+      ? { ...parseTaf(tafText, icao), startValidity: tafStart, endValidity: tafEnd }
+      : undefined;
+
     const weatherData: WeatherData = {
       metar: parsedMetar,
-      taf: tafText && tafText !== 'No TAF available' ? parseTaf(tafText, icao) : undefined
+      taf: parsedTaf
     };
 
     if (!weatherData.metar && !weatherData.taf) {

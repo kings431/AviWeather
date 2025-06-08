@@ -36,20 +36,11 @@ const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
   );
 };
 
-const formatDateFromZulu = (zuluDate: string): string => {
-  try {
-    // Format: YYYYMMDDHHMM -> YYYY-MM-DDTHH:MM:00Z
-    const year = zuluDate.slice(0, 4);
-    const month = zuluDate.slice(4, 6);
-    const day = zuluDate.slice(6, 8);
-    const hour = zuluDate.slice(8, 10);
-    const minute = zuluDate.slice(10, 12);
-    
-    const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`);
-    return date.toLocaleString();
-  } catch (e) {
-    return zuluDate;
-  }
+const formatDateFromZulu = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toUTCString();
 };
 
 const formatTimeFromZulu = (zuluDate: string): string => {
@@ -239,8 +230,8 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data }) => {
   // Support both legacy (forecast) and new (periods) keys for compatibility
   const periods = (data && (data.periods || (data as any).forecast)) || [];
   const issued = (data && (data.issue_time || (data as any).issued)) || '';
-  const validFrom = (data && (data.valid_time || (data as any).valid_from)) || '';
-  const validTo = (data && (data.valid_time || (data as any).valid_to)) || '';
+  const validFrom = data.startValidity || data.valid_time || (data as any).valid_from || '';
+  const validTo = data.endValidity || data.valid_time || (data as any).valid_to || '';
   const tafIssueTime = (data.issue_time || (data as any).issued) || '';
 
   if (!data || !Array.isArray(periods) || periods.length === 0) {

@@ -80,6 +80,8 @@ export interface TafData {
   issue_time: string;
   valid_time: string;
   periods: TafPeriod[];
+  startValidity?: string;
+  endValidity?: string;
 }
 
 export type WeatherData = {
