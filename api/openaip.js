@@ -9,7 +9,12 @@ export default async function handler(req, res) {
 
   try {
     const response = await axios.get(
-      `https://api.core.openaip.net/api/airports?search=${icao.toUpperCase()}`
+      `https://api.core.openaip.net/api/airports?search=${icao.toUpperCase()}`,
+      {
+        headers: {
+          'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        },
+      }
     );
     if (!response.data.items || response.data.items.length === 0) {
       return res.status(404).json({ error: 'Airport not found' });
