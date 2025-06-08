@@ -106,36 +106,31 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
         />
       )}
 
-      {/* Always show raw METAR and TAF if available */}
+      {/* METAR and TAF sections (raw always, simplified toggleable) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Raw METAR Card */}
+        {/* METAR Section */}
         {weatherData.metar && (
           <div className="card p-4 animate-fade-in print:hidden">
-            <h3 className="text-xl font-medium">Raw METAR</h3>
+            <h3 className="text-xl font-medium mb-2">METAR</h3>
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
               {weatherData.metar.raw}
             </div>
+            {showMetar && (
+              <MetarDisplay data={weatherData.metar} icao={station.icao} />
+            )}
           </div>
         )}
-        {/* Raw TAF Card */}
+        {/* TAF Section */}
         {weatherData.taf && (
           <div className="card p-4 animate-fade-in print:hidden">
-            <h3 className="text-xl font-medium">Raw TAF</h3>
+            <h3 className="text-xl font-medium mb-2">TAF</h3>
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
               {weatherData.taf.raw}
             </div>
+            {showTaf && (
+              <TafDisplay data={weatherData.taf} />
+            )}
           </div>
-        )}
-      </div>
-      {/* Simplified METAR and TAF (toggleable) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Simplified METAR Card */}
-        {showMetar && weatherData.metar && (
-          <MetarDisplay data={weatherData.metar} icao={station.icao} />
-        )}
-        {/* Simplified TAF Card */}
-        {showTaf && weatherData.taf && (
-          <TafDisplay data={weatherData.taf} />
         )}
       </div>
     </div>
