@@ -1,12 +1,12 @@
 import React from 'react';
 import useStore from '../store';
 import { Star } from 'lucide-react';
-import { fetchWeatherData } from '../services/weatherApi';
+import { fetchWeatherData, fetchStationData } from '../services/weatherApi';
 
 const FavoritesBar: React.FC = () => {
   const { 
     favorites, 
-    setSelectedStation, 
+    setSelectedStations, 
     setWeatherData,
     setIsLoading,
     setError,
@@ -21,9 +21,12 @@ const FavoritesBar: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const weatherData = await fetchWeatherData(stationId);
+      const [stationData, weatherData] = await Promise.all([
+        fetchStationData(stationId),
+        fetchWeatherData(stationId)
+      ]);
       setWeatherData(stationId, weatherData);
-      setSelectedStation(station);
+      setSelectedStations([stationData]);
     } catch (error) {
       setError(`Unable to fetch weather data for ${stationId}`);
     } finally {
