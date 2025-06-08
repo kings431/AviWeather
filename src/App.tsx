@@ -70,14 +70,7 @@ function App() {
       <Header />
       
       <main className="container mx-auto px-4 py-8 max-w-7xl">
-        {selectedStation && (
-          <button
-            onClick={() => window.print()}
-            className="print:hidden px-3 py-1 rounded bg-primary-600 text-white text-sm hover:bg-primary-700 mb-4 float-right"
-          >
-            Print
-          </button>
-        )}
+        {/* Remove duplicate Print button here */}
         <div className="print:hidden">
           <FavoritesBar />
         </div>
