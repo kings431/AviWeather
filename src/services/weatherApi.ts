@@ -552,13 +552,37 @@ export const fetchNearestAirports = async (lat: number, lon: number, excludeIcao
     // Use a reasonable radius (e.g., 50km) for nearby airports
     const response = await axios.get(`/api/openaip?lat=${lat}&lon=${lon}&radius=50`);
     if (response.data && response.data.items && response.data.items.length > 0) {
-      // Exclude the current airport by ICAO if provided
       let airports = response.data.items;
       if (excludeIcao) {
-        airports = airports.filter((apt: any) => apt.icao !== excludeIcao);
+        airports = airports.filter((apt: any) => apt.icao !== excludeIcao && apt.icaoCode !== excludeIcao);
       }
-      // Sort by distance if available, otherwise just take the first 10
-      return airports.slice(0, 10);
+      // Haversine formula for distance (km)
+      function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
+        const R = 6371; // km
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+      // Filter and sort by distance
+      airports = airports
+        .map((apt: any) => {
+          const aptLat = apt.geometry?.coordinates?.[1];
+          const aptLon = apt.geometry?.coordinates?.[0];
+          const dist = (typeof aptLat === 'number' && typeof aptLon === 'number')
+            ? haversine(lat, lon, aptLat, aptLon)
+            : Infinity;
+          return { ...apt, _distance: dist };
+        })
+        .filter((apt: any) => apt._distance <= 50)
+        .sort((a: any, b: any) => a._distance - b._distance)
+        .slice(0, 10);
+      return airports;
     }
     return [];
   } catch (error) {
