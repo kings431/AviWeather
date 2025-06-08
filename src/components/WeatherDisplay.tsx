@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WeatherData, Station } from '../types';
 import MetarDisplay from './MetarDisplay';
 import TafDisplay from './TafDisplay';
@@ -22,6 +22,11 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
   // Only show the error banner if the error is about an invalid station
   const isStationError = weatherData.error && /invalid ICAO|not found/i.test(weatherData.error);
 
+  // Toggle states for sections
+  const [showNotams, setShowNotams] = useState(true);
+  const [showMetar, setShowMetar] = useState(true);
+  const [showTaf, setShowTaf] = useState(true);
+
   return (
     <div className="space-y-6">
       {isStationError && (
@@ -29,6 +34,33 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
           <span className="mr-2">❗</span> {weatherData.error}
         </div>
       )}
+      {/* Toggle switches */}
+      <div className="flex flex-wrap gap-4 items-center mb-2">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <span className="text-sm">NOTAMs</span>
+          <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+            <input type="checkbox" checked={showNotams} onChange={() => setShowNotams(v => !v)} className="sr-only peer" />
+            <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+            <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+          </span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <span className="text-sm">Show Simplified METAR</span>
+          <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+            <input type="checkbox" checked={showMetar} onChange={() => setShowMetar(v => !v)} className="sr-only peer" />
+            <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+            <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+          </span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <span className="text-sm">Show Simplified TAF</span>
+          <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+            <input type="checkbox" checked={showTaf} onChange={() => setShowTaf(v => !v)} className="sr-only peer" />
+            <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+            <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+          </span>
+        </label>
+      </div>
       {/* Print-only block: ICAO, airport name, and raw data sections */}
       <div className="print:block hidden mb-8">
         <div className="mb-2">
@@ -66,31 +98,44 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
       <StationInfo station={station} lastUpdated={lastUpdated} />
       
       {/* Weather Reports (SIGMETs, AIRMETs, PIREPs) */}
-      <WeatherReports
-        sigmets={weatherData.sigmet}
-        airmets={weatherData.airmet}
-        pireps={weatherData.pirep}
-      />
+      {showNotams && (
+        <WeatherReports
+          sigmets={weatherData.sigmet}
+          airmets={weatherData.airmet}
+          pireps={weatherData.pirep}
+        />
+      )}
 
-      {/* Restore grid for METAR and TAF */}
+      {/* Always show raw METAR and TAF if available */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* METAR Card */}
-        {weatherData.metar ? (
-          <MetarDisplay data={weatherData.metar} icao={station.icao} />
-        ) : (
+        {/* Raw METAR Card */}
+        {weatherData.metar && (
           <div className="card p-4 animate-fade-in print:hidden">
-            <h3 className="text-xl font-medium">METAR</h3>
-            <div className="text-gray-500 dark:text-gray-400 mt-2">No METAR data available for this station.</div>
+            <h3 className="text-xl font-medium">Raw METAR</h3>
+            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
+              {weatherData.metar.raw}
+            </div>
           </div>
         )}
-        {/* TAF Card */}
-        {weatherData.taf ? (
-          <TafDisplay data={weatherData.taf} />
-        ) : (
+        {/* Raw TAF Card */}
+        {weatherData.taf && (
           <div className="card p-4 animate-fade-in print:hidden">
-            <h3 className="text-xl font-medium">TAF</h3>
-            <div className="text-gray-500 dark:text-gray-400 mt-2">No TAF data available for this station.</div>
+            <h3 className="text-xl font-medium">Raw TAF</h3>
+            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
+              {weatherData.taf.raw}
+            </div>
           </div>
+        )}
+      </div>
+      {/* Simplified METAR and TAF (toggleable) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Simplified METAR Card */}
+        {showMetar && weatherData.metar && (
+          <MetarDisplay data={weatherData.metar} icao={station.icao} />
+        )}
+        {/* Simplified TAF Card */}
+        {showTaf && weatherData.taf && (
+          <TafDisplay data={weatherData.taf} />
         )}
       </div>
     </div>
