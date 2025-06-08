@@ -336,7 +336,44 @@ const parseTaf = (rawTaf: string, icao: string): TafData => {
       periods.push(period);
     }
     if (periods.length === 0) {
-      console.warn('No valid forecast periods found in TAF');
+      // Fallback: treat the header as a single period if no FM/BECMG/TEMPO found
+      // Use the header for wind, visibility, clouds, etc.
+      const mainForecast = header.replace(/^\w{4}\s+\d{6}Z\s+\d{4}\/\d{4}\s*/, '').replace(/RMK.*$/, '').trim();
+      // Extract wind
+      const windMatch = mainForecast.match(/(\d{3}|VRB)(\d{2})(G\d{2})?(KT|MPS)/);
+      const wind = windMatch ? {
+        direction: windMatch[1] === 'VRB' ? 0 : parseInt(windMatch[1]),
+        speed: parseInt(windMatch[2]),
+        gust: windMatch[3] ? parseInt(windMatch[3].slice(1)) : undefined,
+        unit: windMatch[4]
+      } : undefined;
+      // Extract visibility
+      const visMatch = mainForecast.match(/\b(P6SM|\d{1,2}SM)\b/);
+      const visibility = visMatch ? {
+        value: visMatch[1] === 'P6SM' ? 6 : parseInt(visMatch[1]),
+        unit: 'SM'
+      } : undefined;
+      // Extract clouds
+      const cloudMatches = Array.from(mainForecast.matchAll(/(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?/g));
+      const clouds = cloudMatches.map(match => ({
+        type: match[1] as 'FEW' | 'SCT' | 'BKN' | 'OVC',
+        height: parseInt(match[2]) * 100,
+        modifier: match[3] as 'CB' | 'TCU' | undefined
+      }));
+      // Extract flight category (optional, not always present)
+      const categoryMatch = mainForecast.match(/(VFR|MVFR|IFR|LIFR)/);
+      const flight_category = categoryMatch ? categoryMatch[1] as 'VFR' | 'MVFR' | 'IFR' | 'LIFR' : undefined;
+      periods.push({
+        type: 'FM',
+        start: '',
+        end: '',
+        raw: mainForecast,
+        wind,
+        visibility,
+        conditions: [],
+        clouds,
+        flight_category
+      });
     }
     return {
       raw: rawTaf,
