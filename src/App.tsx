@@ -62,6 +62,20 @@ function App() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showNotams, setShowNotams] = useState(true);
 
+  // Surface type mapping for OpenAIP mainComposite codes
+  const surfaceTypeMap: Record<number, string> = {
+    0: 'Asphalt',
+    1: 'Concrete',
+    2: 'Grass',
+    3: 'Gravel',
+    4: 'Dirt',
+    5: 'Water',
+    6: 'Snow',
+    7: 'Ice',
+    8: 'Sand',
+    9: 'Other',
+  };
+
   // Placeholder for the new detailed airport info page
   function AirportDetailsPage() {
     const { icao } = useParams();
@@ -160,7 +174,11 @@ function App() {
                             <td className="px-3 py-2">{rwy.trueHeading !== undefined ? rwy.trueHeading + '°' : '-'}</td>
                             <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
                             <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
-                            <td className="px-3 py-2">{typeof rwy.surface === 'string' ? rwy.surface : rwy.surface ? JSON.stringify(rwy.surface) : '-'}</td>
+                            <td className="px-3 py-2">{
+                              rwy.surface && typeof rwy.surface.mainComposite === 'number'
+                                ? surfaceTypeMap[rwy.surface.mainComposite] || '-'
+                                : '-'
+                            }</td>
                             <td className="px-3 py-2">{typeof rwy.lighting === 'string' ? rwy.lighting : rwy.lighting ? JSON.stringify(rwy.lighting) : 'No'}</td>
                             <td className="px-3 py-2">{rwy.mainRunway !== undefined ? (rwy.mainRunway ? 'Yes' : 'No') : '-'}</td>
                             <td className="px-3 py-2">{rwy.operations !== undefined ? rwy.operations : '-'}</td>
