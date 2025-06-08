@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WeatherData, Station } from '../types';
 import MetarDisplay from './MetarDisplay';
 import TafDisplay from './TafDisplay';
@@ -26,6 +26,18 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
   const [showNotams, setShowNotams] = useState(true);
   const [showMetar, setShowMetar] = useState(true);
   const [showTaf, setShowTaf] = useState(true);
+
+  // For METAR history dropdown
+  const [metarChoice, setMetarChoice] = useState(2);
+  const [metars, setMetars] = useState<any[]>([]);
+  useEffect(() => {
+    if (weatherData.metar) {
+      fetch(`/api/metar?icao=${station.icao}&metar_choice=${metarChoice}`)
+        .then(res => res.json())
+        .then(data => setMetars(data.metars || []));
+    }
+  }, [station.icao, weatherData.metar, metarChoice]);
+  const previousMetars = weatherData.metar && metars.length > 0 ? metars.filter(m => m.text !== weatherData.metar!.raw) : [];
 
   return (
     <div className="space-y-6">
@@ -115,8 +127,37 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
               {weatherData.metar.raw}
             </div>
-            {showMetar && (
+            {showMetar ? (
               <MetarDisplay data={weatherData.metar} icao={station.icao} />
+            ) : (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Show past</span>
+                  <select
+                    className="text-xs rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1"
+                    value={metarChoice}
+                    onChange={e => setMetarChoice(Number(e.target.value))}
+                  >
+                    <option value={2}>2 hours</option>
+                    <option value={3}>3 hours</option>
+                    <option value={6}>6 hours</option>
+                  </select>
+                </div>
+                {previousMetars.length > 0 ? (
+                  <div className="space-y-2">
+                    {previousMetars.map((m, idx) => (
+                      <div key={idx}>
+                        <pre className="font-mono text-xs whitespace-pre-wrap mb-1">{m.text}</pre>
+                        {m.startValidity && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{new Date(m.startValidity).toUTCString()}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">No previous METARs found.</div>
+                )}
+              </div>
             )}
           </div>
         )}
