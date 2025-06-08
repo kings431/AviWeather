@@ -104,6 +104,8 @@ function App() {
             <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('overview')}>Overview</button></li>
             <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('runways')}>Runways</button></li>
             <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('map')}>Map</button></li>
+            <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('frequencies')}>Frequencies</button></li>
+            <li><button className="py-2 px-3 hover:underline" onClick={() => handleTabClick('services')}>Services</button></li>
             {/* Add more tabs as needed */}
           </ul>
         </nav>
@@ -139,28 +141,32 @@ function App() {
                     <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
                       <thead>
                         <tr className="bg-gray-100 dark:bg-gray-800">
-                          <th className="px-3 py-2 text-left">Name</th>
+                          <th className="px-3 py-2 text-left">Designator</th>
+                          <th className="px-3 py-2 text-left">True Heading</th>
                           <th className="px-3 py-2 text-left">Length</th>
                           <th className="px-3 py-2 text-left">Width</th>
                           <th className="px-3 py-2 text-left">Surface</th>
                           <th className="px-3 py-2 text-left">Lighting</th>
-                          <th className="px-3 py-2 text-left">Heading</th>
+                          <th className="px-3 py-2 text-left">Main Runway</th>
+                          <th className="px-3 py-2 text-left">Operations</th>
+                          <th className="px-3 py-2 text-left">Aligned True North</th>
+                          {/* Add more fields as needed */}
                         </tr>
                       </thead>
                       <tbody>
-                        {airport.runways.map((rwy: any, idx: number) => {
-                          console.log('Runway object:', rwy);
-                          return (
-                            <tr key={rwy.name || idx} className="border-t border-gray-200 dark:border-gray-700">
-                              <td className="px-3 py-2 font-mono">{rwy.name || '-'}</td>
-                              <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
-                              <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
-                              <td className="px-3 py-2">{typeof rwy.surface === 'string' ? rwy.surface : rwy.surface ? JSON.stringify(rwy.surface) : '-'}</td>
-                              <td className="px-3 py-2">{typeof rwy.lighting === 'string' ? rwy.lighting : rwy.lighting ? JSON.stringify(rwy.lighting) : 'No'}</td>
-                              <td className="px-3 py-2">{Array.isArray(rwy.ends) && rwy.ends.length > 0 ? rwy.ends.map((end: any) => end.ident).join(' / ') : '-'}</td>
-                            </tr>
-                          );
-                        })}
+                        {airport.runways.map((rwy: any, idx: number) => (
+                          <tr key={rwy.designator || idx} className="border-t border-gray-200 dark:border-gray-700">
+                            <td className="px-3 py-2 font-mono">{rwy.designator || '-'}</td>
+                            <td className="px-3 py-2">{rwy.trueHeading !== undefined ? rwy.trueHeading + '°' : '-'}</td>
+                            <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
+                            <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
+                            <td className="px-3 py-2">{typeof rwy.surface === 'string' ? rwy.surface : rwy.surface ? JSON.stringify(rwy.surface) : '-'}</td>
+                            <td className="px-3 py-2">{typeof rwy.lighting === 'string' ? rwy.lighting : rwy.lighting ? JSON.stringify(rwy.lighting) : 'No'}</td>
+                            <td className="px-3 py-2">{rwy.mainRunway !== undefined ? (rwy.mainRunway ? 'Yes' : 'No') : '-'}</td>
+                            <td className="px-3 py-2">{rwy.operations !== undefined ? rwy.operations : '-'}</td>
+                            <td className="px-3 py-2">{rwy.alignedTrueNorth !== undefined ? (rwy.alignedTrueNorth ? 'Yes' : 'No') : '-'}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -184,6 +190,58 @@ function App() {
                     </Popup>
                   </Marker>
                 </MapContainer>
+              </div>
+            </section>
+            {/* Frequencies Section */}
+            <section id="frequencies" className="scroll-mt-24 mb-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-2">Frequencies</h3>
+                {airport.frequencies && airport.frequencies.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-800">
+                          <th className="px-3 py-2 text-left">Type</th>
+                          <th className="px-3 py-2 text-left">Frequency</th>
+                          <th className="px-3 py-2 text-left">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {airport.frequencies.map((freq: any, idx: number) => (
+                          <tr key={freq.type + freq.value + idx} className="border-t border-gray-200 dark:border-gray-700">
+                            <td className="px-3 py-2">{freq.type || '-'}</td>
+                            <td className="px-3 py-2 font-mono">{freq.value || '-'}</td>
+                            <td className="px-3 py-2">{freq.description || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">No frequency data available.</div>
+                )}
+              </div>
+            </section>
+            {/* Services Section */}
+            <section id="services" className="scroll-mt-24 mb-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold mb-2">Services</h3>
+                {airport.services ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <tbody>
+                        {Object.entries(airport.services).map(([key, value]: [string, any]) => (
+                          <tr key={key} className="border-t border-gray-200 dark:border-gray-700">
+                            <td className="px-3 py-2 font-semibold capitalize">{key.replace(/_/g, ' ')}</td>
+                            <td className="px-3 py-2">{typeof value === 'string' || typeof value === 'number' ? value : value ? JSON.stringify(value) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">No services data available.</div>
+                )}
               </div>
             </section>
           </>
