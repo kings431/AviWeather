@@ -75,24 +75,22 @@ function App() {
           {isLoading ? (
             <LoadingSpinner />
           ) : selectedStations && selectedStations.length > 0 ? (
-            <div className="space-y-8 mb-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                {selectedStations.map(station => (
-                  <div key={station.icao} className="flex flex-col gap-4">
-                    {weatherData[station.icao] && (
-                      <WeatherDisplay 
-                        weatherData={weatherData[station.icao]}
-                        station={station}
-                        lastUpdated={weatherData[station.icao].lastUpdated}
-                      />
-                    )}
-                    <NotamDisplay icao={station.icao} />
-                    <GFADisplay icao={station.icao} />
-                    <RadarDisplay icao={station.icao} />
-                    <WeatherCameras icao={station.icao} />
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-12 mb-8">
+              {selectedStations.map(station => (
+                <div key={station.icao} className="flex flex-col gap-4 w-full">
+                  {weatherData[station.icao] && (
+                    <WeatherDisplay 
+                      weatherData={weatherData[station.icao]}
+                      station={station}
+                      lastUpdated={weatherData[station.icao].lastUpdated}
+                    />
+                  )}
+                  <NotamDisplay icao={station.icao} />
+                  <GFADisplay icao={station.icao} />
+                  <RadarDisplay icao={station.icao} />
+                  <WeatherCameras icao={station.icao} />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
