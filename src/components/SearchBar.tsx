@@ -103,6 +103,7 @@ const SearchBar: React.FC = () => {
       setWeatherData(station.icao, weatherData);
       setSelectedStations([station]);
       addToRecentSearches(station);
+      navigate('/');
       setQuery('');
       setIsDropdownOpen(false);
     } catch (error) {
