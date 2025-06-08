@@ -85,10 +85,17 @@ function App() {
                       lastUpdated={weatherData[station.icao].lastUpdated}
                     />
                   )}
-                  <NotamDisplay icao={station.icao} />
-                  <GFADisplay icao={station.icao} />
-                  <RadarDisplay icao={station.icao} />
-                  <WeatherCameras icao={station.icao} />
+                  {/* Two-column layout for NOTAMs and other sections */}
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex-1">
+                      <NotamDisplay icao={station.icao} />
+                    </div>
+                    <div className="flex flex-col flex-1 gap-4">
+                      <GFADisplay icao={station.icao} />
+                      <RadarDisplay icao={station.icao} />
+                      <WeatherCameras icao={station.icao} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
