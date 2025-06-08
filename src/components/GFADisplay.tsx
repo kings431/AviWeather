@@ -18,7 +18,7 @@ const CANADA_GFA_REGIONS: Record<string, { name: string; code: string }> = {
 
 const GFA_TYPES = [
   { label: 'Clouds & Weather', key: 'CLDWX' },
-  { label: 'Icing, Turbulence & Freezing Level', key: 'TURBC' },
+  { label: 'Icing, Turbulence & Freezing Level', key: '&image=GFA/TURBC' },
 ];
 
 const getCanadaRegion = (icao: string) => {
