@@ -3,10 +3,15 @@ import { Plane } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import SearchBar from './SearchBar';
 import useStore from '../store';
+import { useNavigate } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const { setSelectedStations } = useStore();
-  const goHome = () => setSelectedStations([]);
+  const navigate = useNavigate();
+  const goHome = () => {
+    setSelectedStations([]);
+    navigate('/');
+  };
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
       <div className="container mx-auto px-4 py-4">

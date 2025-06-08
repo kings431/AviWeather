@@ -58,7 +58,7 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
         <div className="flex-1">
           <div className="flex items-center flex-wrap gap-2">
-            <h2 className="text-xl sm:text-2xl font-semibold">{station.icao}</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold">{station.icao || '-'}</h2>
             {station.iata && (
               <span className="text-xs sm:text-sm bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
                 {station.iata}
@@ -79,7 +79,11 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
           </div>
           {station.elevation !== undefined && (
             <div className="mt-1 text-sm sm:text-base text-gray-600 dark:text-gray-400">
-              Elevation: {station.elevation} ft
+              Elevation: {
+                typeof station.elevation === 'number'
+                  ? `${Math.round(station.elevation * 3.28084)} ft`
+                  : '-'
+              }
             </div>
           )}
         </div>

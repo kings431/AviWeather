@@ -135,12 +135,20 @@ function App() {
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                   <div>
                     <h2 className="text-xl font-semibold mb-1">{airport.name}</h2>
-                    <div className="text-gray-600 dark:text-gray-400 mb-1">{airport.location?.city}, {airport.location?.country}</div>
-                    <div className="text-sm text-gray-500">ICAO: {airport.icao} {airport.iata && <>| IATA: {airport.iata}</>}</div>
+                    <div className="text-gray-600 dark:text-gray-400 mb-1">
+                      {airport.location?.city ? airport.location.city : ''}
+                      {airport.location?.city && airport.location?.country ? ', ' : ''}
+                      {airport.location?.country ? airport.location.country : ''}
+                    </div>
+                    <div className="text-sm text-gray-500">ICAO: {airport.icao || '-'}</div>
                   </div>
                   <div className="text-sm text-gray-500">
                     <div>Coordinates: {position[0].toFixed(4)}, {position[1].toFixed(4)}</div>
-                    <div>Elevation: {airport.elevation?.value} {airport.elevation?.unit}</div>
+                    <div>Elevation: {
+                      airport.elevation?.value && typeof airport.elevation.value === 'number'
+                        ? `${Math.round(airport.elevation.value * 3.28084)} ft`
+                        : '-'
+                    }</div>
                     <div>Timezone: {airport.timezone || 'N/A'}</div>
                   </div>
                 </div>

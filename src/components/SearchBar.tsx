@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react';
 import useStore from '../store';
 import { fetchStationData, fetchWeatherData } from '../services/weatherApi';
 import { Station } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const SearchBar: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -18,6 +19,7 @@ const SearchBar: React.FC = () => {
     clearError
   } = useStore();
   const searchRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -74,6 +76,7 @@ const SearchBar: React.FC = () => {
       });
       stations.forEach(station => addToRecentSearches(station));
       setSelectedStations(stations);
+      navigate('/');
 
       // For any failed ICAOs, set error weather data
       results.forEach(r => {
