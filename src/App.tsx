@@ -42,7 +42,12 @@ function App() {
 
   const handleQuickStart = async (icao: string) => {
     try {
-      const stationData = await fetchStationData(icao);
+      // Fetch both station and weather data together
+      const [stationData, weatherData] = await Promise.all([
+        fetchStationData(icao),
+        fetchWeatherData(icao)
+      ]);
+      setWeatherData(icao, weatherData);
       setSelectedStations([stationData]);
       addToRecentSearches(stationData);
     } catch (error) {
