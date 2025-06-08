@@ -132,7 +132,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
               {weatherData.metar.raw}
             </div>
             {showMetar ? (
-              <MetarDisplay data={weatherData.metar} icao={station.icao} hideRaw={true} />
+              <MetarDisplay data={weatherData.metar} icao={station.icao} hideRaw={true} hideBadge={true} />
             ) : (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">

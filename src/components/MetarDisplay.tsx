@@ -6,6 +6,7 @@ interface MetarDisplayProps {
   data: MetarData;
   icao?: string;
   hideRaw?: boolean;
+  hideBadge?: boolean;
 }
 
 export const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
@@ -54,7 +55,7 @@ function formatMetarTime(metarTime: string): string {
 
 const METAR_CHOICES = [2, 3, 6];
 
-const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false }) => {
+const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false, hideBadge = false }) => {
   const [metarChoice, setMetarChoice] = useState(2);
   const [metars, setMetars] = useState<any[]>([]);
   const station = icao || data.station;
@@ -90,9 +91,11 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false
       <div className="card space-y-4 animate-fade-in print:hidden">
         {/* Detailed card for the most recent METAR (always shown, from store) */}
         <div className="space-y-4">
-          <div className="flex justify-between items-start">
-            <FlightCategoryBadge category={data.flight_category} />
-          </div>
+          {!hideBadge && (
+            <div className="flex justify-between items-start">
+              <FlightCategoryBadge category={data.flight_category} />
+            </div>
+          )}
           {!hideRaw && (
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
               {data.raw}
