@@ -51,22 +51,37 @@ const SearchBar: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Fetch station and weather data for each ICAO in parallel
-      const stationPromises = icaos.map(fetchStationData);
-      const weatherPromises = icaos.map(fetchWeatherData);
-      const stations = await Promise.all(stationPromises);
-      const weatherDatas = await Promise.allSettled(weatherPromises);
+      // For each ICAO, fetch station and weather data together
+      const results = await Promise.all(
+        icaos.map(async (icao) => {
+          try {
+            const [station, weather] = await Promise.all([
+              fetchStationData(icao),
+              fetchWeatherData(icao)
+            ]);
+            return { icao, station, weather };
+          } catch (err) {
+            return { icao, error: err };
+          }
+        })
+      );
 
-      // Set weather data for each ICAO
-      weatherDatas.forEach((result, idx) => {
-        if (result.status === 'fulfilled') {
-          setWeatherData(icaos[idx], result.value);
-        } else {
-          setWeatherData(icaos[idx], { error: `Unable to find weather data for ${icaos[idx]}` });
+      // Filter out failed fetches and set state for each ICAO
+      const validResults = results.filter(r => r.station && r.weather);
+      const stations = validResults.map(r => r.station).filter(Boolean) as Station[];
+      validResults.forEach(r => {
+        if (r.weather) setWeatherData(r.icao, r.weather);
+      });
+      stations.forEach(station => addToRecentSearches(station));
+      setSelectedStations(stations);
+
+      // For any failed ICAOs, set error weather data
+      results.forEach(r => {
+        if (!r.station || !r.weather) {
+          setWeatherData(r.icao, { error: `Unable to find weather data for ${r.icao}` });
         }
       });
-      setSelectedStations(stations);
-      stations.forEach(addToRecentSearches);
+
       setQuery('');
       setIsDropdownOpen(false);
     } catch (error) {
