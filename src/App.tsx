@@ -228,15 +228,13 @@ function App() {
                         <tr className="bg-gray-100 dark:bg-gray-800">
                           <th className="px-3 py-2 text-left">Type</th>
                           <th className="px-3 py-2 text-left">Frequency</th>
-                          <th className="px-3 py-2 text-left">Description</th>
                         </tr>
                       </thead>
                       <tbody>
                         {airport.frequencies.map((freq: any, idx: number) => (
                           <tr key={freq.type + freq.value + idx} className="border-t border-gray-200 dark:border-gray-700">
-                            <td className="px-3 py-2">{freq.type || '-'}</td>
+                            <td className="px-3 py-2">{freq.name || '-'}</td>
                             <td className="px-3 py-2 font-mono">{freq.value || '-'}</td>
-                            <td className="px-3 py-2">{freq.description || '-'}</td>
                           </tr>
                         ))}
                       </tbody>
