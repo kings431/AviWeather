@@ -12,7 +12,7 @@ const useStore = create<StoreState>()(
       favorites: [],
       recentSearches: [],
       weatherData: {},
-      selectedStation: null,
+      selectedStations: [],
       themeMode: 'system',
       isLoading: false,
       error: null,
@@ -28,9 +28,9 @@ const useStore = create<StoreState>()(
           },
         })),
 
-      setSelectedStation: (station) => 
+      setSelectedStations: (stations) =>
         set(() => ({
-          selectedStation: station,
+          selectedStations: stations,
         })),
 
       addToFavorites: (station) =>

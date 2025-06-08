@@ -10,7 +10,7 @@ const SearchBar: React.FC = () => {
   const { 
     favorites,
     recentSearches,
-    setSelectedStation,
+    setSelectedStations,
     addToRecentSearches,
     setWeatherData,
     setIsLoading,
@@ -33,35 +33,44 @@ const SearchBar: React.FC = () => {
   
   const handleSearch = async (event: React.FormEvent) => {
     event.preventDefault();
-    
     if (!query.trim()) return;
-    
-    const icao = query.trim().toUpperCase();
-    
-    // ICAO codes are typically 4 characters
-    if (icao.length !== 4) {
-      setError('Please enter a valid 4-letter ICAO code');
+
+    // Split input by comma, space, or newline, filter valid ICAO codes
+    const icaos = query
+      .toUpperCase()
+      .split(/[^A-Z0-9]+/)
+      .map(code => code.trim())
+      .filter(code => code.length === 4);
+
+    if (icaos.length === 0) {
+      setError('Please enter at least one valid 4-letter ICAO code');
       return;
     }
-    
+
     clearError();
     setIsLoading(true);
-    
+
     try {
-      // Fetch station data
-      const stationData = await fetchStationData(icao);
-      
-      // Fetch weather data
-      const weatherData = await fetchWeatherData(icao);
-      
-      setWeatherData(icao, weatherData);
-      setSelectedStation(stationData);
-      addToRecentSearches(stationData);
+      // Fetch station and weather data for each ICAO in parallel
+      const stationPromises = icaos.map(fetchStationData);
+      const weatherPromises = icaos.map(fetchWeatherData);
+      const stations = await Promise.all(stationPromises);
+      const weatherDatas = await Promise.allSettled(weatherPromises);
+
+      // Set weather data for each ICAO
+      weatherDatas.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          setWeatherData(icaos[idx], result.value);
+        } else {
+          setWeatherData(icaos[idx], { error: `Unable to find weather data for ${icaos[idx]}` });
+        }
+      });
+      setSelectedStations(stations);
+      stations.forEach(addToRecentSearches);
       setQuery('');
       setIsDropdownOpen(false);
-      
     } catch (error) {
-      setError(`Unable to find weather data for ${icao}`);
+      setError('Unable to find weather data for one or more ICAO codes');
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +83,7 @@ const SearchBar: React.FC = () => {
       // Fetch weather data
       const weatherData = await fetchWeatherData(station.icao);
       setWeatherData(station.icao, weatherData);
-      setSelectedStation(station);
+      setSelectedStations([station]);
       addToRecentSearches(station);
       setQuery('');
       setIsDropdownOpen(false);

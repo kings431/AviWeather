@@ -16,32 +16,18 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function App() {
   const { 
-    selectedStation, 
+    selectedStations, 
     weatherData, 
     setWeatherData,
-    setSelectedStation,
+    setSelectedStations,
     addToRecentSearches,
     error,
     clearError,
     setError
   } = useStore();
 
-  const { isLoading } = useQuery(
-    ['weather', selectedStation?.icao],
-    async () => {
-      if (!selectedStation) return null;
-      const data = await fetchWeatherData(selectedStation.icao);
-      setWeatherData(selectedStation.icao, data);
-      return data;
-    },
-    {
-      enabled: !!selectedStation,
-      refetchInterval: 60000,
-      onError: (err) => {
-        setError(err instanceof Error ? err.message : String(err));
-      }
-    }
-  );
+  // Remove old useQuery logic; fetching is now handled in SearchBar for all stations
+  const isLoading = useStore(state => state.isLoading);
 
   // Quick Start logic
   const quickStartAirports = ['KJFK', 'KLAX', 'EGLL', 'KSFO', 'KORD', 'CYYZ', 'CYVR', 'CYUL', 'CYWG', 'CYOW'];
@@ -57,7 +43,7 @@ function App() {
   const handleQuickStart = async (icao: string) => {
     try {
       const stationData = await fetchStationData(icao);
-      setSelectedStation(stationData);
+      setSelectedStations([stationData]);
       addToRecentSearches(stationData);
     } catch (error) {
       setError(`Unable to find weather data for ${icao}`);
@@ -88,22 +74,24 @@ function App() {
           
           {isLoading ? (
             <LoadingSpinner />
-          ) : selectedStation ? (
+          ) : selectedStations && selectedStations.length > 0 ? (
             <div className="space-y-8 mb-8">
-              {weatherData[selectedStation.icao] && (
-                <WeatherDisplay 
-                  weatherData={weatherData[selectedStation.icao]}
-                  station={selectedStation}
-                  lastUpdated={weatherData[selectedStation.icao].lastUpdated}
-                />
-              )}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <NotamDisplay icao={selectedStation.icao} />
-                <div className="flex flex-col">
-                  <GFADisplay icao={selectedStation.icao} />
-                  <RadarDisplay icao={selectedStation.icao} />
-                  <WeatherCameras icao={selectedStation.icao} />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                {selectedStations.map(station => (
+                  <div key={station.icao} className="flex flex-col gap-4">
+                    {weatherData[station.icao] && (
+                      <WeatherDisplay 
+                        weatherData={weatherData[station.icao]}
+                        station={station}
+                        lastUpdated={weatherData[station.icao].lastUpdated}
+                      />
+                    )}
+                    <NotamDisplay icao={station.icao} />
+                    <GFADisplay icao={station.icao} />
+                    <RadarDisplay icao={station.icao} />
+                    <WeatherCameras icao={station.icao} />
+                  </div>
+                ))}
               </div>
             </div>
           ) : (

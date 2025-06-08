@@ -142,7 +142,7 @@ export type AppState = {
   favorites: Station[];
   recentSearches: Station[];
   weatherData: Record<string, WeatherData>;
-  selectedStation: Station | null;
+  selectedStations: Station[];
   themeMode: ThemeMode;
   isLoading: boolean;
   error: string | null;
@@ -150,7 +150,7 @@ export type AppState = {
 
 export type AppActions = {
   setWeatherData: (stationId: string, data: WeatherData) => void;
-  setSelectedStation: (station: Station | null) => void;
+  setSelectedStations: (stations: Station[]) => void;
   addToFavorites: (station: Station) => void;
   removeFromFavorites: (stationId: string) => void;
   addToRecentSearches: (station: Station) => void;
