@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, Star, StarOff } from 'lucide-react';
 import { Station } from '../types';
 import useStore from '../store';
@@ -23,22 +23,33 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
     }
   };
 
-  // Helper to get local time in ISO 8601 format, using coordinates for timezone
-  const getLocalTime = () => {
-    if (!station.latitude || !station.longitude) return 'N/A';
+  // State for live time
+  const [now, setNow] = useState(DateTime.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(DateTime.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Get local time zone from coordinates
+  let localTimeString = 'N/A';
+  let localTzAbbr: string = '';
+  if (station.latitude && station.longitude) {
     try {
       const tz = tzlookup(station.latitude, station.longitude);
-      return DateTime.now().setZone(tz).toISO({ suppressMilliseconds: true });
+      const local = now.setZone(tz);
+      localTimeString = local.toFormat('MMMM d, yyyy, h:mm:ss a');
+      localTzAbbr = local.offsetNameShort || '';
     } catch {
-      // fallback: browser local time
-      return new Date().toISOString().replace(/\.\d{3}Z$/, '');
+      localTimeString = now.toFormat('MMMM d, yyyy, h:mm:ss a');
+      localTzAbbr = now.offsetNameShort || '';
     }
-  };
+  }
 
-  // Helper to get Zulu (UTC) time in ISO 8601 format
-  const getZuluTime = () => {
-    return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-  };
+  // Zulu (UTC) time
+  const zuluTimeString = now.toUTC().toFormat('MMMM d, yyyy, HH:mm:ss') + ' UTC';
 
   return (
     <div className="card print:hidden">
@@ -76,8 +87,12 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
         
         {/* Right side: Local and Zulu time */}
         <div className="flex flex-col items-end gap-1">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Local Time (24h): <span className="font-mono">{getLocalTime()}</span></div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Zulu Time: <span className="font-mono">{getZuluTime()}</span></div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Local Time: <span className="font-mono">{localTimeString} {localTzAbbr && `(${localTzAbbr})`}</span>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Zulu Time: <span className="font-mono">{zuluTimeString}</span>
+          </div>
           {lastUpdated !== undefined && <UpdateIndicator lastUpdated={lastUpdated} />}
         </div>
         
