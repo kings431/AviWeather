@@ -407,17 +407,11 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
     const metars = metarRes.data.metars || [];
     const latestMetar = metarRes.data.latestMetar || null;
 
-    // Fetch TAF from NOAA (unchanged)
-    const tafUrl = `${NOAA_BASE_URL}/taf.php?ids=${icao}&format=raw`;
-    const tafResponse = await axios.get(`${CORS_PROXY}${encodeURIComponent(tafUrl)}`).catch(error => {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        return { data: '' };
-      }
-      throw error;
-    });
-    const tafText = typeof tafResponse.data === 'string'
-      ? tafResponse.data.trim()
-      : tafResponse.data.contents?.trim() || '';
+    // Fetch TAF from NavCanada
+    const navcanadaTafUrl = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&alpha=taf&_=${Date.now()}`;
+    const tafResponse = await axios.get(navcanadaTafUrl);
+    const tafDataArr = tafResponse.data.data || [];
+    const tafText = tafDataArr.length > 0 ? tafDataArr[0].text : '';
 
     // Strip only 'METAR ' prefix from NavCanada METAR text, keep station code
     const originalMetarText = latestMetar?.text || '';
