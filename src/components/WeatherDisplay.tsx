@@ -41,9 +41,17 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
       </div>
       {/* Normal UI (hidden in print) */}
       {/* <UpdateIndicator lastUpdated={lastUpdated} /> */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Weather Information</h2>
-        <RefreshButton stationId={station.icao} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="print:hidden px-3 py-1 rounded bg-primary-600 text-white text-sm hover:bg-primary-700"
+          >
+            Print
+          </button>
+          <RefreshButton stationId={station.icao} />
+        </div>
       </div>
       <StationInfo station={station} lastUpdated={lastUpdated} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
