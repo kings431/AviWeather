@@ -408,7 +408,7 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
     const latestMetar = metarRes.data.latestMetar || null;
 
     // Fetch TAF from NavCanada
-    const navcanadaTafUrl = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&alpha=taf&_=${Date.now()}`;
+    const navcanadaTafUrl = `https://plan.navcanada.ca/weather/api/alpha/?site=${icao}&alpha=taf`;
     const tafResponse = await axios.get(navcanadaTafUrl);
     const tafDataArr = tafResponse.data.data || [];
     const tafText = tafDataArr.length > 0 ? tafDataArr[0].text : '';
