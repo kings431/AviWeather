@@ -62,14 +62,14 @@ function App() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <Header />
         
-        <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
           {/* Remove duplicate Print button here */}
           <div className="print:hidden">
             <FavoritesBar />
           </div>
           
           {error && (
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <ErrorMessage 
                 message={error} 
                 onDismiss={clearError} 
@@ -80,9 +80,9 @@ function App() {
           {isLoading ? (
             <LoadingSpinner />
           ) : selectedStations && selectedStations.length > 0 ? (
-            <div className="space-y-12 mb-8">
+            <div className="space-y-6 sm:space-y-12 mb-4 sm:mb-8">
               {selectedStations.map(station => (
-                <div key={station.icao} className="flex flex-col gap-4 w-full">
+                <div key={station.icao} className="flex flex-col gap-3 sm:gap-4 w-full">
                   {weatherData[station.icao] && (
                     <WeatherDisplay 
                       weatherData={weatherData[station.icao]}
@@ -91,11 +91,11 @@ function App() {
                     />
                   )}
                   {/* Two-column layout for NOTAMs and other sections */}
-                  <div className="flex flex-col lg:flex-row gap-6">
+                  <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     <div className="flex-1">
                       <NotamDisplay icao={station.icao} />
                     </div>
-                    <div className="flex flex-col flex-1 gap-4">
+                    <div className="flex flex-col flex-1 gap-3 sm:gap-4">
                       <GFADisplay icao={station.icao} />
                       <RadarDisplay icao={station.icao} />
                       <WeatherCameras icao={station.icao} />
@@ -105,23 +105,23 @@ function App() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] px-2 sm:px-4">
               <div className="flex flex-col items-center">
-                <div className="mb-4">
-                  <Plane size={48} className="text-primary-500 mx-auto" />
+                <div className="mb-3 sm:mb-4">
+                  <Plane size={40} className="text-primary-500 mx-auto sm:w-12 sm:h-12" />
                 </div>
-                <h2 className="text-3xl font-bold mb-2">Welcome to AviWeather</h2>
-                <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto text-lg mb-6">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-center">Welcome to AviWeather</h2>
+                <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto text-base sm:text-lg mb-4 sm:mb-6 text-center px-2">
                   Search for an airport using its ICAO code to get the latest aviation weather information including <b>METARs</b>, <b>TAFs</b>, and area forecasts.
                 </p>
-                <div className="mt-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg inline-block w-full max-w-md">
-                  <p className="text-xl font-semibold mb-2">Quick Start</p>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Try searching for these popular airports:</p>
-                  <div className="flex flex-wrap justify-center gap-2">
+                <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg inline-block w-full max-w-md">
+                  <p className="text-lg sm:text-xl font-semibold mb-2">Quick Start</p>
+                  <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-3">Try searching for these popular airports:</p>
+                  <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
                     {shuffledAirports.map(icao => (
                       <button
                         key={icao}
-                        className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded text-sm font-mono transition-colors shadow-sm"
+                        className="px-2 sm:px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded text-xs sm:text-sm font-mono transition-colors shadow-sm"
                         onClick={() => handleQuickStart(icao)}
                       >
                         {icao}
@@ -135,11 +135,11 @@ function App() {
         </main>
         
         <footer className="bg-white dark:bg-gray-900 shadow-sm border-t border-gray-200 dark:border-gray-800 mt-auto">
-          <div className="container mx-auto px-4 py-4">
+          <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
             {/* Disclaimer Modal */}
             {showDisclaimer && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-lg w-full p-6 relative">
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4">
+                <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-lg p-4 sm:p-6 relative">
                   <button
                     className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl"
                     onClick={() => setShowDisclaimer(false)}
@@ -147,23 +147,23 @@ function App() {
                   >
                     &times;
                   </button>
-                  <div className="font-semibold mb-2 text-lg">Legal Disclaimer</div>
-                  <p className="mb-2 text-sm text-gray-800 dark:text-gray-100">
+                  <div className="font-semibold mb-2 text-base sm:text-lg">Legal Disclaimer</div>
+                  <p className="mb-2 text-xs sm:text-sm text-gray-800 dark:text-gray-100">
                     The information provided on this app is for general informational purposes only. AviWeather (or any associated person) is not responsible for any inaccuracy. Always get a proper flight briefing from your local FIC and/or fact check all information displayed with official sources!
                   </p>
-                  <p className="text-sm text-gray-800 dark:text-gray-100">
+                  <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-100">
                     Please be aware that any information you may find here may be inaccurate or misleading. Use of information displayed is at your own risk.
                   </p>
                 </div>
               </div>
             )}
-            <div className="text-center text-xs text-gray-600 dark:text-gray-400 flex flex-col md:flex-row items-center justify-center gap-2">
+            <div className="text-center text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 flex flex-col md:flex-row items-center justify-center gap-1 sm:gap-2">
               <span>All aviation data displayed belong to <a href="https://www.navcanada.ca/" target="_blank" rel="noopener noreferrer" className="underline">NAV CANADA</a></span>
-              <span>-</span>
-              <button className="underline cursor-pointer bg-transparent border-0 p-0 m-0 text-xs text-gray-600 dark:text-gray-400" style={{textDecoration: 'underline'}} onClick={() => setShowDisclaimer(true)}>
+              <span className="hidden md:inline">-</span>
+              <button className="underline cursor-pointer bg-transparent border-0 p-0 m-0 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400" style={{textDecoration: 'underline'}} onClick={() => setShowDisclaimer(true)}>
                 Legal Disclaimer
               </button>
-              <span className="ml-2">Version 1.0.0</span>
+              <span className="ml-0 md:ml-2">Version 1.0.0</span>
             </div>
           </div>
         </footer>
