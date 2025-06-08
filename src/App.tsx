@@ -157,32 +157,31 @@ function App() {
                         <tr className="bg-gray-100 dark:bg-gray-800">
                           <th className="px-3 py-2 text-left">Designator</th>
                           <th className="px-3 py-2 text-left">True Heading</th>
-                          <th className="px-3 py-2 text-left">Length</th>
-                          <th className="px-3 py-2 text-left">Width</th>
+                          <th className="px-3 py-2 text-left">Length (ft)</th>
+                          <th className="px-3 py-2 text-left">Width (ft)</th>
                           <th className="px-3 py-2 text-left">Surface</th>
-                          <th className="px-3 py-2 text-left">Lighting</th>
-                          <th className="px-3 py-2 text-left">Main Runway</th>
-                          <th className="px-3 py-2 text-left">Operations</th>
-                          <th className="px-3 py-2 text-left">Aligned True North</th>
-                          {/* Add more fields as needed */}
                         </tr>
                       </thead>
                       <tbody>
                         {airport.runways.map((rwy: any, idx: number) => (
                           <tr key={rwy.designator || idx} className="border-t border-gray-200 dark:border-gray-700">
                             <td className="px-3 py-2 font-mono">{rwy.designator || '-'}</td>
-                            <td className="px-3 py-2">{rwy.trueHeading !== undefined ? rwy.trueHeading + '°' : '-'}</td>
-                            <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
-                            <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
+                            <td className="px-3 py-2">{typeof rwy.trueHeading === 'number' ? `${rwy.trueHeading}°` : '-'}</td>
+                            <td className="px-3 py-2">{
+                              rwy.dimension && rwy.dimension.length && typeof rwy.dimension.length.value === 'number'
+                                ? Math.round(rwy.dimension.length.value * 3.28084)
+                                : '-'
+                            }</td>
+                            <td className="px-3 py-2">{
+                              rwy.dimension && rwy.dimension.width && typeof rwy.dimension.width.value === 'number'
+                                ? Math.round(rwy.dimension.width.value * 3.28084)
+                                : '-'
+                            }</td>
                             <td className="px-3 py-2">{
                               rwy.surface && typeof rwy.surface.mainComposite === 'number'
                                 ? surfaceTypeMap[rwy.surface.mainComposite] || '-'
                                 : '-'
                             }</td>
-                            <td className="px-3 py-2">{typeof rwy.lighting === 'string' ? rwy.lighting : rwy.lighting ? JSON.stringify(rwy.lighting) : 'No'}</td>
-                            <td className="px-3 py-2">{rwy.mainRunway !== undefined ? (rwy.mainRunway ? 'Yes' : 'No') : '-'}</td>
-                            <td className="px-3 py-2">{rwy.operations !== undefined ? rwy.operations : '-'}</td>
-                            <td className="px-3 py-2">{rwy.alignedTrueNorth !== undefined ? (rwy.alignedTrueNorth ? 'Yes' : 'No') : '-'}</td>
                           </tr>
                         ))}
                       </tbody>
