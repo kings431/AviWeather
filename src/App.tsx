@@ -13,8 +13,8 @@ import RadarDisplay from './components/RadarDisplay';
 import { Plane } from 'lucide-react';
 import WeatherCameras from './components/WeatherCameras';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Routes, Route, useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { Routes, Route, useParams, Link } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -397,14 +397,113 @@ function App() {
     );
   }
 
+  function RoutePlannerPage() {
+    const [route, setRoute] = React.useState('');
+    const [submittedRoute, setSubmittedRoute] = React.useState<string[]>([]);
+    const [stations, setStations] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const icaos = route
+        .toUpperCase()
+        .split(/[^A-Z0-9]+/)
+        .map(code => code.trim())
+        .filter(code => code.length === 4);
+      setSubmittedRoute(icaos);
+      setLoading(true);
+      // Fetch station data for each ICAO
+      const results = await Promise.all(
+        icaos.map(async (icao) => {
+          try {
+            const station = await fetchStationData(icao);
+            const weather = await fetchWeatherData(icao);
+            return { ...station, weather };
+          } catch {
+            return null;
+          }
+        })
+      );
+      setStations(results.filter(Boolean));
+      setLoading(false);
+    };
+
+    // Get route coordinates for map
+    const routeCoords: LatLngExpression[] = stations
+      .filter(s => typeof s.latitude === 'number' && typeof s.longitude === 'number')
+      .map(s => [s.latitude, s.longitude]);
+
+    return (
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
+        <h1 className="text-2xl font-bold mb-4">Route Planner</h1>
+        <form onSubmit={handleSubmit} className="mb-6">
+          <label className="block mb-2 font-semibold">Enter route (ICAO codes separated by space or comma):</label>
+          <input
+            type="text"
+            className="input w-full max-w-lg mb-2"
+            placeholder="CYWG YWG V300 YQT CYQT"
+            value={route}
+            onChange={e => setRoute(e.target.value)}
+          />
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded shadow transition-colors text-sm">Plan Route</button>
+        </form>
+        {loading && <div className="p-4 text-center">Loading route data...</div>}
+        {stations.length > 0 && !loading && (
+          <div className="mb-6">
+            <div className="card mb-4">
+              <h2 className="text-lg font-semibold mb-2">Route Map</h2>
+              <div style={{ height: '400px', width: '100%' }}>
+                <MapContainer center={routeCoords[0] || [49.91, -97.24]} zoom={5} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution="&copy; OpenStreetMap contributors"
+                  />
+                  {routeCoords.map((pos, idx) => (
+                    <Marker key={idx} position={pos}>
+                      <Popup>
+                        {stations[idx]?.icao || ''}<br />
+                        {stations[idx]?.name || ''}
+                      </Popup>
+                    </Marker>
+                  ))}
+                  {routeCoords.length > 1 && <Polyline positions={routeCoords} color="blue" />}
+                </MapContainer>
+              </div>
+            </div>
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-2">Route Weather</h2>
+              <ul>
+                {stations.map((s, idx) => (
+                  <li key={s.icao || idx} className="mb-2">
+                    <b>{s.icao}</b> {s.name && `- ${s.name}`}
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {s.weather?.metar?.raw ? (
+                        <span>METAR: {s.weather.metar.raw}</span>
+                      ) : (
+                        <span>No METAR available</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <Header />
+        <nav className="container mx-auto px-2 sm:px-4 py-2 max-w-7xl flex gap-4">
+          <Link to="/" className="hover:underline">Home</Link>
+          <Link to="/route-planner" className="hover:underline">Route Planner</Link>
+        </nav>
         <Routes>
           <Route path="/" element={
             <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
-              {/* Remove duplicate Print button here */}
               <div className="print:hidden">
                 <FavoritesBar />
               </div>
@@ -431,7 +530,6 @@ function App() {
                           setShowNotams={setShowNotams}
                         />
                       )}
-                      {/* Two-column layout for NOTAMs and other sections */}
                       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                         <div className="flex-1">
                           {showNotams && <NotamDisplay icao={station.icao} />}
@@ -476,10 +574,10 @@ function App() {
             </main>
           } />
           <Route path="/airport/:icao" element={<AirportDetailsPage />} />
+          <Route path="/route-planner" element={<RoutePlannerPage />} />
         </Routes>
         <footer className="bg-white dark:bg-gray-900 shadow-sm border-t border-gray-200 dark:border-gray-800 mt-auto">
           <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
-            {/* Disclaimer Modal */}
             {showDisclaimer && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4">
                 <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-lg p-4 sm:p-6 relative">

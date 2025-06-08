@@ -579,7 +579,7 @@ export const fetchNearestAirports = async (lat: number, lon: number, excludeIcao
             : Infinity;
           return { ...apt, _distance: dist };
         })
-        .filter((apt: any) => apt._distance <= 100)
+        .filter((apt: any) => apt._distance <= 150)
         .sort((a: any, b: any) => a._distance - b._distance)
         .slice(0, 10);
       return airports;
