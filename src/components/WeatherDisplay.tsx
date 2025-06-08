@@ -62,13 +62,16 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
         airmets={weatherData.airmet}
         pireps={weatherData.pirep}
       />
-      
-      {weatherData.metar && (
-        <MetarDisplay data={weatherData.metar} icao={station.icao} />
-      )}
-      {weatherData.taf && (
-        <TafDisplay data={weatherData.taf} />
-      )}
+
+      {/* Restore grid for METAR and TAF */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {weatherData.metar && (
+          <MetarDisplay data={weatherData.metar} icao={station.icao} />
+        )}
+        {weatherData.taf && (
+          <TafDisplay data={weatherData.taf} />
+        )}
+      </div>
       {(!weatherData.metar && !weatherData.taf) && weatherData.error && (
         <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
           <p className="text-gray-500 dark:text-gray-400">{weatherData.error}</p>
