@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface RadarDisplayProps {
   icao: string;
@@ -20,14 +21,16 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
   const [radarType, setRadarType] = useState<RadarType>('echotop');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [prefetchedImages, setPrefetchedImages] = useState<(string | null)[]>([]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     setFrames([]);
+    setPrefetchedImages([]);
     fetch(`/api/radar?icao=${icao}&type=${radarType}`)
       .then(res => res.json())
-      .then(data => {
+      .then(async data => {
         // Flatten all frames from all returned radar products
         const flatFrames: any[] = [];
         (data.frames || []).forEach((product: any) => {
@@ -48,6 +51,21 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
         });
         setFrames(flatFrames);
         setFrameIdx((flatFrames.length || 1) - 1); // default to latest
+
+        // Prefetch all images as data URLs
+        const imagePromises = flatFrames.map(frame =>
+          fetch(frame.imageUrl)
+            .then(res => res.blob())
+            .then(blob => new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            }))
+            .catch(() => null)
+        );
+        const images = await Promise.all(imagePromises);
+        setPrefetchedImages(images);
         setLoading(false);
       })
       .catch(() => {
@@ -106,9 +124,9 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
         ))}
       </div>
       <div className="flex flex-col items-center print:grid print:grid-cols-1 print:gap-2 print:items-start print:justify-start">
-        {frames.length > 0 ? (
+        {prefetchedImages.length > 0 && prefetchedImages[frameIdx] ? (
           <img
-            src={frames[frameIdx].imageUrl}
+            src={prefetchedImages[frameIdx] || ''}
             alt="Radar"
             className="rounded shadow-md max-w-lg w-full h-auto print:max-w-[350px] print:rounded-none print:shadow-none print:w-auto print:h-auto"
             style={{ objectFit: 'contain' }}
@@ -118,24 +136,43 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ icao }) => {
         )}
         {/* Controls: slider, prev, next, play/pause */}
         {frames.length > 1 && (
-          <div className="w-full max-w-lg mt-4 flex flex-col items-center">
+          <div className="w-full max-w-lg mt-3 flex flex-col items-center gap-2">
             <input
               type="range"
               min={0}
               max={frames.length - 1}
               value={frameIdx}
               onChange={handleSliderChange}
-              className="w-full mb-4 accent-blue-600 h-2 rounded-lg appearance-none bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ height: '8px' }}
+              className="w-full accent-blue-600 h-1 rounded-lg appearance-none bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{ height: '6px' }}
             />
-            <div className="flex justify-center gap-6 w-full mb-2">
-              <button onClick={handlePrev} aria-label="Previous frame" className="px-5 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow hover:bg-blue-100 dark:hover:bg-blue-900 text-2xl text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">&#x25C0;</button>
-              <button onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} className="px-5 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow hover:bg-blue-100 dark:hover:bg-blue-900 text-2xl text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {isPlaying ? '❚❚' : '▶'}
+            <div className="flex justify-center items-center gap-3 w-full mt-1">
+              <button
+                onClick={handlePrev}
+                aria-label="Previous frame"
+                className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                style={{ fontSize: 20 }}
+              >
+                <ChevronLeft size={20} />
               </button>
-              <button onClick={handleNext} aria-label="Next frame" className="px-5 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow hover:bg-blue-100 dark:hover:bg-blue-900 text-2xl text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">&#x25B6;</button>
+              <button
+                onClick={handlePlayPause}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+                className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                style={{ fontSize: 20 }}
+              >
+                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+              </button>
+              <button
+                onClick={handleNext}
+                aria-label="Next frame"
+                className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                style={{ fontSize: 20 }}
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
-            <div className="text-xs text-gray-500 mt-2">
+            <div className="text-xs text-gray-500 mt-1">
               {frames[frameIdx].validTime ? (
                 <>
                   {frames[frameIdx].validTime}Z
