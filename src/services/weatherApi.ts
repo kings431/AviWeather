@@ -438,19 +438,34 @@ export const fetchStationData = async (icao: string): Promise<Station> => {
 };
 
 export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
+  let stationValid = true;
   try {
     // Fetch METARs from NavCanada
-    const metarRes = await axios.get(`/api/metar?icao=${icao}&metar_choice=6`);
-    const metars = metarRes.data.metars || [];
-    const latestMetar = metarRes.data.latestMetar || null;
+    let metarRes, metars, latestMetar;
+    try {
+      metarRes = await axios.get(`/api/metar?icao=${icao}&metar_choice=6`);
+      metars = metarRes.data.metars || [];
+      latestMetar = metarRes.data.latestMetar || null;
+    } catch (err) {
+      // If METAR fetch fails, don't throw yet
+      metars = [];
+      latestMetar = null;
+    }
 
     // Fetch TAF from your own API (server-side proxy to NavCanada)
-    const tafResponse = await axios.get(`/api/taf?icao=${icao}`);
-    const tafDataArr = tafResponse.data.data || [];
-    const tafObj = tafDataArr.length > 0 ? tafDataArr[0] : {};
-    const tafText = tafObj.text || '';
-    const tafStart = tafObj.startValidity || '';
-    const tafEnd = tafObj.endValidity || '';
+    let tafResponse, tafDataArr, tafObj, tafText, tafStart, tafEnd;
+    try {
+      tafResponse = await axios.get(`/api/taf?icao=${icao}`);
+      tafDataArr = tafResponse.data.data || [];
+      tafObj = tafDataArr.length > 0 ? tafDataArr[0] : {};
+      tafText = tafObj.text || '';
+      tafStart = tafObj.startValidity || '';
+      tafEnd = tafObj.endValidity || '';
+    } catch (err) {
+      tafText = '';
+      tafStart = '';
+      tafEnd = '';
+    }
 
     // Fetch SIGMETs, AIRMETs, and PIREPs for Canadian airports
     let sigmets: SigmetData[] = [];
@@ -495,6 +510,7 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       ? { ...parseTaf(tafText, icao), startValidity: tafStart, endValidity: tafEnd }
       : undefined;
 
+    // If both METAR and TAF are missing, do NOT throw an error here. Only throw if the station is invalid (see below).
     const weatherData: WeatherData = {
       metar: parsedMetar,
       taf: parsedTaf,
@@ -503,16 +519,13 @@ export const fetchWeatherData = async (icao: string): Promise<WeatherData> => {
       pirep: pireps
     };
 
-    if (!weatherData.metar && !weatherData.taf) {
-      throw new Error(`No weather data available for ${icao}`);
-    }
-
     return weatherData;
   } catch (error) {
     console.error('Weather data fetch error:', error);
+    // Only throw a global error if the station is truly invalid (not found)
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 404) {
-        throw new Error(`Weather data not available for ${icao}`);
+        throw new Error(`Station not found or invalid ICAO: ${icao}`);
       }
       if (error.response?.status === 403) {
         throw new Error('Access to weather data is currently restricted. Please try again later.');

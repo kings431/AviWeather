@@ -18,8 +18,17 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
   const metarRaw = weatherData.metar?.raw || '';
   const tafRaw = weatherData.taf?.raw || '';
   // We'll fetch NOTAMs in NotamDisplay, so just leave a placeholder for now
+
+  // Only show the error banner if the error is about an invalid station
+  const isStationError = weatherData.error && /invalid ICAO|not found/i.test(weatherData.error);
+
   return (
     <div className="space-y-6">
+      {isStationError && (
+        <div className="p-4 mb-4 rounded border border-red-700 bg-red-900/20 text-red-200 flex items-center">
+          <span className="mr-2">❗</span> {weatherData.error}
+        </div>
+      )}
       {/* Print-only block: ICAO, airport name, and raw data sections */}
       <div className="print:block hidden mb-8">
         <div className="mb-2">
@@ -65,18 +74,25 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
 
       {/* Restore grid for METAR and TAF */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {weatherData.metar && (
+        {/* METAR Card */}
+        {weatherData.metar ? (
           <MetarDisplay data={weatherData.metar} icao={station.icao} />
+        ) : (
+          <div className="card p-4 animate-fade-in print:hidden">
+            <h3 className="text-xl font-medium">METAR</h3>
+            <div className="text-gray-500 dark:text-gray-400 mt-2">No METAR data available for this station.</div>
+          </div>
         )}
-        {weatherData.taf && (
+        {/* TAF Card */}
+        {weatherData.taf ? (
           <TafDisplay data={weatherData.taf} />
+        ) : (
+          <div className="card p-4 animate-fade-in print:hidden">
+            <h3 className="text-xl font-medium">TAF</h3>
+            <div className="text-gray-500 dark:text-gray-400 mt-2">No TAF data available for this station.</div>
+          </div>
         )}
       </div>
-      {(!weatherData.metar && !weatherData.taf) && weatherData.error && (
-        <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
-          <p className="text-gray-500 dark:text-gray-400">{weatherData.error}</p>
-        </div>
-      )}
     </div>
   );
 };
