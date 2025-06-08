@@ -148,16 +148,19 @@ function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {airport.runways.map((rwy: any, idx: number) => (
-                          <tr key={rwy.name || idx} className="border-t border-gray-200 dark:border-gray-700">
-                            <td className="px-3 py-2 font-mono">{rwy.name || '-'}</td>
-                            <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
-                            <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
-                            <td className="px-3 py-2">{rwy.surface || '-'}</td>
-                            <td className="px-3 py-2">{rwy.lighting ? 'Yes' : 'No'}</td>
-                            <td className="px-3 py-2">{rwy.ends && rwy.ends.length > 0 ? rwy.ends.map((end: any) => end.ident).join(' / ') : '-'}</td>
-                          </tr>
-                        ))}
+                        {airport.runways.map((rwy: any, idx: number) => {
+                          console.log('Runway object:', rwy);
+                          return (
+                            <tr key={rwy.name || idx} className="border-t border-gray-200 dark:border-gray-700">
+                              <td className="px-3 py-2 font-mono">{rwy.name || '-'}</td>
+                              <td className="px-3 py-2">{rwy.length?.value ? `${rwy.length.value} ${rwy.length.unit}` : '-'}</td>
+                              <td className="px-3 py-2">{rwy.width?.value ? `${rwy.width.value} ${rwy.width.unit}` : '-'}</td>
+                              <td className="px-3 py-2">{typeof rwy.surface === 'string' ? rwy.surface : rwy.surface ? JSON.stringify(rwy.surface) : '-'}</td>
+                              <td className="px-3 py-2">{typeof rwy.lighting === 'string' ? rwy.lighting : rwy.lighting ? JSON.stringify(rwy.lighting) : 'No'}</td>
+                              <td className="px-3 py-2">{Array.isArray(rwy.ends) && rwy.ends.length > 0 ? rwy.ends.map((end: any) => end.ident).join(' / ') : '-'}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
