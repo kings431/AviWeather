@@ -6,6 +6,7 @@ import StationInfo from './StationInfo';
 import RefreshButton from './RefreshButton';
 import UpdateIndicator from './UpdateIndicator';
 import WeatherReports from './WeatherReports';
+import { FlightCategoryBadge } from './MetarDisplay';
 
 interface WeatherDisplayProps {
   weatherData: WeatherData;
@@ -124,6 +125,9 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
         {weatherData.metar && (
           <div className="card p-4 animate-fade-in print:hidden">
             <h3 className="text-xl font-medium mb-2">METAR</h3>
+            <div className="flex items-center mb-2">
+              <FlightCategoryBadge category={weatherData.metar.flight_category} />
+            </div>
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
               {weatherData.metar.raw}
             </div>

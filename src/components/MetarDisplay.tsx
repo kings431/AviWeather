@@ -8,7 +8,7 @@ interface MetarDisplayProps {
   hideRaw?: boolean;
 }
 
-const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
+export const FlightCategoryBadge: React.FC<{ category: string }> = ({ category }) => {
   let bgColor = 'bg-success-100 text-success-800';
   let label = 'VFR';
 

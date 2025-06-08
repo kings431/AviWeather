@@ -241,6 +241,7 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false }) => {
 
   return (
     <div className="space-y-4 animate-fade-in print:hidden">
+      <h3 className="text-xl font-medium">TAF</h3>
       {/* Raw TAF at the top, unless hideRaw is true */}
       {!hideRaw && (
         <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
@@ -248,7 +249,6 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false }) => {
         </div>
       )}
       <div>
-        <h3 className="text-xl font-medium">TAF</h3>
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
           {validFrom && validTo && (
             <div className="flex items-center">
