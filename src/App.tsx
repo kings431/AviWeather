@@ -56,6 +56,7 @@ function App() {
   };
 
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showNotams, setShowNotams] = useState(true);
 
   return (
     <>
@@ -88,12 +89,14 @@ function App() {
                       weatherData={weatherData[station.icao]}
                       station={station}
                       lastUpdated={weatherData[station.icao].lastUpdated}
+                      showNotams={showNotams}
+                      setShowNotams={setShowNotams}
                     />
                   )}
                   {/* Two-column layout for NOTAMs and other sections */}
                   <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     <div className="flex-1">
-                      <NotamDisplay icao={station.icao} />
+                      {showNotams && <NotamDisplay icao={station.icao} />}
                     </div>
                     <div className="flex flex-col flex-1 gap-3 sm:gap-4">
                       <GFADisplay icao={station.icao} />

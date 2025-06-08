@@ -12,9 +12,11 @@ interface WeatherDisplayProps {
   weatherData: WeatherData;
   station: Station;
   lastUpdated?: number;
+  showNotams?: boolean;
+  setShowNotams?: (v: boolean) => void;
 }
 
-const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, lastUpdated }) => {
+const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, lastUpdated, showNotams, setShowNotams }) => {
   // Prepare raw blocks for print
   const metarRaw = weatherData.metar?.raw || '';
   const tafRaw = weatherData.taf?.raw || '';
@@ -24,9 +26,12 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
   const isStationError = weatherData.error && /invalid ICAO|not found/i.test(weatherData.error);
 
   // Toggle states for sections
-  const [showNotams, setShowNotams] = useState(true);
   const [showMetar, setShowMetar] = useState(true);
   const [showTaf, setShowTaf] = useState(true);
+  // Use lifted state for NOTAMs if provided, otherwise local
+  const [localShowNotams, localSetShowNotams] = useState(true);
+  const effectiveShowNotams = typeof showNotams === 'boolean' ? showNotams : localShowNotams;
+  const effectiveSetShowNotams = setShowNotams || localSetShowNotams;
 
   // For METAR history dropdown
   const [metarChoice, setMetarChoice] = useState(2);
@@ -48,11 +53,11 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
         </div>
       )}
       {/* Toggle switches */}
-      <div className="flex flex-wrap gap-4 items-center mb-2">
+      <div className="flex flex-wrap gap-4 items-center mb-2 print:hidden">
         <label className="flex items-center gap-2 cursor-pointer">
           <span className="text-sm">NOTAMs</span>
           <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-            <input type="checkbox" checked={showNotams} onChange={() => setShowNotams(v => !v)} className="sr-only peer" />
+            <input type="checkbox" checked={effectiveShowNotams} onChange={() => effectiveSetShowNotams(!effectiveShowNotams)} className="sr-only peer" />
             <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
             <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
           </span>
@@ -111,7 +116,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, station, l
       <StationInfo station={station} lastUpdated={lastUpdated} />
       
       {/* Weather Reports (SIGMETs, AIRMETs, PIREPs) */}
-      {showNotams && (
+      {effectiveShowNotams && (
         <WeatherReports
           sigmets={weatherData.sigmet}
           airmets={weatherData.airmet}
