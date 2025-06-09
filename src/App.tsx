@@ -522,7 +522,34 @@ function App() {
       <Routes>
         <RouterRoute path="/" element={
           <div className="container mx-auto px-4 py-8">
-            {/* ... existing home page content ... */}
+            {selectedStations.length === 0 ? (
+              <>
+                <h1 className="text-3xl font-bold mb-6">Welcome to AviWeather</h1>
+                <p className="mb-6 text-lg text-gray-700 dark:text-gray-300">Aviation weather, NOTAMs, and route planning for pilots. Search for an airport above to get started, or try a quick start below.</p>
+                <div className="mb-8">
+                  <h2 className="text-lg font-semibold mb-2">Quick Start Airports</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {shuffledAirports.map(icao => (
+                      <button
+                        key={icao}
+                        onClick={() => handleQuickStart(icao)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                      >
+                        {icao}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <WeatherDisplay
+                weatherData={weatherData[selectedStations[0]?.icao]}
+                station={selectedStations[0]}
+                lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated}
+                showNotams={showNotams}
+                setShowNotams={setShowNotams}
+              />
+            )}
           </div>
         } />
         <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />

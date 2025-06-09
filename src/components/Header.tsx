@@ -3,7 +3,7 @@ import { Plane } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import SearchBar from './SearchBar';
 import useStore from '../store';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const { setSelectedStations } = useStore();
@@ -26,6 +26,9 @@ const Header: React.FC = () => {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Aviation Weather for Pilots</p>
               </div>
             </button>
+            <nav className="ml-6">
+              <Link to="/route-planner" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Route Planner</Link>
+            </nav>
           </div>
           
           <div className="flex items-center w-full sm:w-auto justify-between sm:justify-end gap-4">
