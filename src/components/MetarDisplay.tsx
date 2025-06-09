@@ -103,7 +103,8 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false
           </div>
 
           {/* Show simplified METAR only when hideRaw is false (toggle ON) */}
-          {hideRaw === true && (
+          {hideRaw === false && (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Wind Information */}
               <div className="flex items-start space-x-3">
@@ -166,46 +167,47 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false
                 </div>
               </div>
             </div>
-          )}
-          {/* Cloud Layers */}
-          {data.clouds && data.clouds.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cloud Layers</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {data.clouds.map((cloud, index) => (
-                  <div 
-                    key={index}
-                    className="px-3 py-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
-                  >
-                    <div className="text-sm font-medium">{cloud.type}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {cloud.height} ft{cloud.modifier ? ` (${cloud.modifier})` : ''}
+            {/* Cloud Layers */}
+            {data.clouds && data.clouds.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cloud Layers</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {data.clouds.map((cloud, index) => (
+                    <div 
+                      key={index}
+                      className="px-3 py-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="text-sm font-medium">{cloud.type}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {cloud.height} ft{cloud.modifier ? ` (${cloud.modifier})` : ''}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-          {/* Weather Conditions */}
-          {data.conditions && data.conditions.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Weather Phenomena</h4>
-              <div className="flex flex-wrap gap-2">
-                {data.conditions.map((condition, index) => (
-                  <div 
-                    key={index}
-                    className="px-3 py-1 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
-                  >
-                    <span className="font-mono text-sm mr-1">{condition.code}</span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{condition.description}</span>
-                  </div>
-                ))}
+            )}
+            {/* Weather Conditions */}
+            {data.conditions && data.conditions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Weather Phenomena</h4>
+                <div className="flex flex-wrap gap-2">
+                  {data.conditions.map((condition, index) => (
+                    <div 
+                      key={index}
+                      className="px-3 py-1 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
+                    >
+                      <span className="font-mono text-sm mr-1">{condition.code}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">{condition.description}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Issued: {formatMetarTime(data.time)}
             </div>
+            </>
           )}
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            Issued: {formatMetarTime(data.time)}
-          </div>
         </div>
 
         {/* Selector and simple list for previous METARs */}
