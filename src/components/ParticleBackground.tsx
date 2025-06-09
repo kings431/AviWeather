@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 import Particles from 'react-tsparticles';
 import { loadFull } from 'tsparticles';
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 // Add a style override to guarantee the background is fixed and does not affect layout
 const particleStyle: React.CSSProperties = {
   position: 'fixed',
@@ -33,10 +35,10 @@ export default function ParticleBackground() {
           shape: {
             type: ['image'],
             image: [
-              { src: '/icons/sun.svg', width: 48, height: 48 },
-              { src: '/icons/cloud.svg', width: 48, height: 48 },
-              { src: '/icons/wind.svg', width: 48, height: 48 },
-              { src: '/icons/rain.svg', width: 48, height: 48 },
+              { src: `${BASE_URL}/icons/sun.svg`, width: 48, height: 48 },
+              { src: `${BASE_URL}/icons/cloud.svg`, width: 48, height: 48 },
+              { src: `${BASE_URL}/icons/wind.svg`, width: 48, height: 48 },
+              { src: `${BASE_URL}/icons/rain.svg`, width: 48, height: 48 },
             ],
           },
         },
