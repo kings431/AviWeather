@@ -12,6 +12,7 @@ interface RoutePlannerProps {
 }
 
 export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
+  console.log('RoutePlanner render');
   const [departure, setDeparture] = useState<string>('');
   const [arrival, setArrival] = useState<string>('');
   const [alternates, setAlternates] = useState<string[]>([]);
@@ -30,6 +31,7 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   const { setCurrentRoute, setAlternateAirports, setLoading, setError: setRouteError } = useRouteStore();
 
   const handleDepartureChange = (value: string) => {
+    console.log('handleDepartureChange', value);
     setDeparture(value);
     if (value && arrival) {
       calculateRoute(value, arrival);
@@ -37,6 +39,7 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   };
 
   const handleArrivalChange = (value: string) => {
+    console.log('handleArrivalChange', value);
     setArrival(value);
     if (departure && value) {
       calculateRoute(departure, value);
@@ -44,21 +47,25 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   };
 
   const calculateRoute = async (dep: string, arr: string) => {
+    console.log('calculateRoute', dep, arr);
     setIsLoading(true);
     setError(null);
     try {
       const optimizer = RouteOptimizer.getInstance();
       const route = await optimizer.optimizeRoute(dep, arr, optimizationCriteria);
+      console.log('Route calculated', route);
       setSuggestedRoute(route);
       
       // Fetch weather data for the route
       const weather = await fetchWeatherData(dep);
+      console.log('Weather fetched', weather);
       setWeatherData(weather);
       
       onRouteSelect(route);
       setCurrentRoute(route);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to calculate route';
+      console.error('Route calculation error', err);
       setError(errorMessage);
       setRouteError(errorMessage);
     } finally {
