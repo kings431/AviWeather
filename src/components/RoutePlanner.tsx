@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useStore from '../store';
 import { useRouteStore } from '../store/routeStore';
 import { fetchWeatherData, fetchStationData, fetchNearestAirports } from '../services/weatherApi';
@@ -103,7 +103,9 @@ function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number
   return (brng + 360) % 360;
 }
 
-const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
+const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
+  console.log('RoutePlanner render');
+
   const {
     routeWaypoints,
     setRouteWaypoints,
@@ -133,6 +135,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
   const { favorites } = useStore();
   const { setCurrentRoute, setError: setRouteError } = useRouteStore();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const initialValues = useRef<string[]>([]);
+  const isInitialized = useRef(false);
 
   const aircraftPresets = [
     { label: 'Cessna 172', speed: 120 },
@@ -147,22 +151,65 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
   const [cruiseSpeed, setCruiseSpeed] = useState<number>(aircraftPresets[0].speed);
 
   // Add local state for input values
-  const [localInputs, setLocalInputs] = useState<string[]>([]);
+  const [localInputs, setLocalInputs] = useState<string[]>(() => {
+    const initial = routeWaypoints.map(wp => wp.icao);
+    initialValues.current = initial;
+    isInitialized.current = true;
+    return initial;
+  });
 
-  // Initialize local inputs when routeWaypoints change
+  // Track active input focus
+  const [focusedInput, setFocusedInput] = useState<number | null>(null);
+
+  // Only update localInputs when routeWaypoints length changes
   useEffect(() => {
-    setLocalInputs(routeWaypoints.map(wp => wp.icao));
-  }, [routeWaypoints.length]); // Only reinitialize when number of waypoints changes
+    if (isInitialized.current && routeWaypoints.length !== localInputs.length) {
+      console.log('Updating localInputs due to length change:', routeWaypoints.map(wp => wp.icao));
+      setLocalInputs(routeWaypoints.map(wp => wp.icao));
+    }
+  }, [routeWaypoints.length]);
+
+  // Handle aircraft speed changes
+  useEffect(() => {
+    const preset = aircraftPresets.find(a => a.label === selectedAircraft);
+    if (preset) {
+      if (selectedAircraft === 'Custom') {
+        setCruiseSpeed(prev => (typeof prev === 'number' && prev > 0 ? prev : 120));
+      } else {
+        setCruiseSpeed(preset.speed);
+      }
+    }
+  }, [selectedAircraft]);
 
   const handleWaypointChange = useCallback((idx: number, value: string) => {
-    // Update local state immediately
-    setLocalInputs(prev => prev.map((v, i) => i === idx ? value.toUpperCase() : v));
+    console.log('handleWaypointChange called:', { idx, value, focusedInput });
     
-    // Update global state after a short delay
+    // Update local state immediately
+    setLocalInputs(prev => {
+      const newInputs = prev.map((v, i) => i === idx ? value.toUpperCase() : v);
+      console.log('Updating localInputs:', newInputs);
+      return newInputs;
+    });
+    
+    // Update global state
     const newIcao = value.toUpperCase();
-    setRouteWaypoints((wps: Waypoint[]) => wps.map((wp, i) => i === idx ? { ...wp, icao: newIcao } : wp));
+    setRouteWaypoints((wps: Waypoint[]) => {
+      const newWaypoints = wps.map((wp, i) => i === idx ? { ...wp, icao: newIcao } : wp);
+      console.log('Updating routeWaypoints:', newWaypoints);
+      return newWaypoints;
+    });
     setValidation(v => v.map((valid, i) => i === idx ? /^[A-Z0-9]{4}$/.test(newIcao) : valid));
-  }, [setRouteWaypoints]);
+  }, [setRouteWaypoints, focusedInput]);
+
+  const handleInputFocus = useCallback((idx: number) => {
+    console.log('Input focused:', idx);
+    setFocusedInput(idx);
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    console.log('Input blurred');
+    setFocusedInput(null);
+  }, []);
 
   // Memoize the add waypoint handler
   const addWaypoint = useCallback(() => {
@@ -270,17 +317,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
     }
   }, [routeWaypoints, cruiseSpeed, onRouteSelect, setCurrentRoute, setRouteError]);
 
-  useEffect(() => {
-    const preset = aircraftPresets.find(a => a.label === selectedAircraft);
-    if (preset) {
-      if (selectedAircraft === 'Custom') {
-        setCruiseSpeed(prev => (typeof prev === 'number' && prev > 0 ? prev : 120));
-      } else {
-        setCruiseSpeed(preset.speed);
-      }
-    }
-  }, [selectedAircraft]);
-
   const findAlternates = async (destinationIcao: string, destLat: number, destLon: number) => {
     try {
       const nearbyAirports = await fetchNearestAirports(destLat, destLon, destinationIcao);
@@ -346,6 +382,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
                 type="text"
                 value={localInputs[0] || ''}
                 onChange={(e) => handleWaypointChange(0, e.target.value)}
+                onFocus={() => handleInputFocus(0)}
+                onBlur={handleInputBlur}
                 maxLength={4}
                 className={`w-full bg-gray-100 border ${validation[0] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
@@ -371,6 +409,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
                   type="text"
                   value={localInputs[idx + 1] || ''}
                   onChange={(e) => handleWaypointChange(idx + 1, e.target.value)}
+                  onFocus={() => handleInputFocus(idx + 1)}
+                  onBlur={handleInputBlur}
                   maxLength={4}
                   className={`flex-1 bg-gray-100 border ${validation[idx + 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   placeholder="ICAO"
@@ -392,6 +432,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
                 type="text"
                 value={localInputs[routeWaypoints.length - 1] || ''}
                 onChange={(e) => handleWaypointChange(routeWaypoints.length - 1, e.target.value)}
+                onFocus={() => handleInputFocus(routeWaypoints.length - 1)}
+                onBlur={handleInputBlur}
                 maxLength={4}
                 className={`w-full bg-gray-100 border ${validation[routeWaypoints.length - 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
@@ -667,8 +709,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
       </main>
     </div>
   );
-});
-
-RoutePlanner.displayName = 'RoutePlanner';
+};
 
 export default RoutePlanner;
