@@ -276,6 +276,30 @@ function App() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution="&copy; OpenStreetMap contributors"
                   />
+                  <LayersControl.BaseLayer checked name="OpenStreetMap">
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution="&copy; OpenStreetMap contributors"
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.BaseLayer name="VNC (VFR Navigation Chart)">
+                    <TileLayer
+                      url="https://wms.chartbundle.com/tms/1.0.0/vfrc/{z}/{x}/{y}.png?api_key=public"
+                      attribution="VNC &copy; ChartBundle/Open Data"
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.BaseLayer name="LO (Low Enroute IFR)">
+                    <TileLayer
+                      url="https://wms.chartbundle.com/tms/1.0.0/enrl/{z}/{x}/{y}.png?api_key=public"
+                      attribution="LO &copy; ChartBundle/Open Data"
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.BaseLayer name="HIGH (High Enroute IFR)">
+                    <TileLayer
+                      url="https://wms.chartbundle.com/tms/1.0.0/enrh/{z}/{x}/{y}.png?api_key=public"
+                      attribution="HIGH &copy; ChartBundle/Open Data"
+                    />
+                  </LayersControl.BaseLayer>
                   <Marker position={position}>
                     <Popup>
                       {airport.name}
@@ -455,6 +479,9 @@ function App() {
     const [alternateHAT, setAlternateHAT] = React.useState<Record<string, string>>({});
     const [alternateStandardMinima, setAlternateStandardMinima] = React.useState<Record<string, boolean>>({});
 
+    // Add state for briefing
+    const [showBriefing, setShowBriefing] = React.useState(false);
+
     // Helper: CAP GEN ceiling rounding
     function roundCeiling(val: number) {
       const rem = val % 100;
@@ -629,6 +656,14 @@ function App() {
     return (
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
         <h1 className="text-2xl font-bold mb-4">Route Planner</h1>
+        <div className="mb-4 flex flex-row gap-4 items-center">
+          <button
+            className="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded shadow text-base"
+            onClick={() => setShowBriefing(true)}
+          >
+            Generate Briefing
+          </button>
+        </div>
         {/* Alternate Suitability Summary Banner */}
         {alternateStations.length > 0 && (
           <div className="card p-4 mb-6">
@@ -797,10 +832,22 @@ function App() {
                         attribution="&copy; OpenStreetMap contributors"
                       />
                     </LayersControl.BaseLayer>
-                    <LayersControl.BaseLayer name="CartoDB Dark Matter">
+                    <LayersControl.BaseLayer name="VNC (VFR Navigation Chart)">
                       <TileLayer
-                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                        attribution="&copy; CartoDB"
+                        url="https://wms.chartbundle.com/tms/1.0.0/vfrc/{z}/{x}/{y}.png?api_key=public"
+                        attribution="VNC &copy; ChartBundle/Open Data"
+                      />
+                    </LayersControl.BaseLayer>
+                    <LayersControl.BaseLayer name="LO (Low Enroute IFR)">
+                      <TileLayer
+                        url="https://wms.chartbundle.com/tms/1.0.0/enrl/{z}/{x}/{y}.png?api_key=public"
+                        attribution="LO &copy; ChartBundle/Open Data"
+                      />
+                    </LayersControl.BaseLayer>
+                    <LayersControl.BaseLayer name="HIGH (High Enroute IFR)">
+                      <TileLayer
+                        url="https://wms.chartbundle.com/tms/1.0.0/enrh/{z}/{x}/{y}.png?api_key=public"
+                        attribution="HIGH &copy; ChartBundle/Open Data"
                       />
                     </LayersControl.BaseLayer>
                     {showRadar && radarTimestamps.length > 0 && (
@@ -1025,6 +1072,24 @@ function App() {
                 </ul>
               </div>
             )}
+          </div>
+        )}
+        {showBriefing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-4xl p-6 relative overflow-y-auto max-h-[90vh]">
+              <button
+                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl"
+                onClick={() => setShowBriefing(false)}
+                aria-label="Close briefing"
+              >
+                &times;
+              </button>
+              <h2 className="text-2xl font-bold mb-4">IFR Briefing (Preview)</h2>
+              <div className="text-gray-700 dark:text-gray-200">
+                {/* TODO: Add full briefing content here (route map, weather, NOTAMs, navlog, etc.) */}
+                <p>This is a preview of the full briefing. All route, weather, NOTAM, and navlog data will appear here.</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
