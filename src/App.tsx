@@ -651,42 +651,38 @@ function App() {
               <h2 className="text-lg font-semibold mb-2">Route Weather & NOTAMs</h2>
               <ul>
                 {stations.map((s, idx) => (
-                  <li key={s.icao || idx} className="mb-8">
-                    <div className="mb-2">
-                      <b>{s.icao}</b> {s.name && `- ${s.name}`}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <li key={s.icao || idx} className="mb-4">
+                    <div className="card p-4 space-y-4">
+                      <div className="mb-2">
+                        <span className="font-bold text-lg">{s.icao}</span> {s.name && <span className="text-base ml-2">- {s.name}</span>}
+                      </div>
                       {/* METAR */}
-                      <div className="col-span-1">
+                      <div>
+                        <h3 className="text-base font-semibold mb-1">METAR</h3>
                         {s.weather?.metar ? (
-                          <div className="card p-3 h-full flex flex-col">
-                            <h3 className="text-base font-semibold mb-1">METAR</h3>
-                            <div className="mb-2">
-                              <FlightCategoryBadge category={s.weather.metar.flight_category} />
-                            </div>
+                          <>
+                            <FlightCategoryBadge category={s.weather.metar.flight_category} />
                             <MetarDisplay data={s.weather.metar} icao={s.icao} hideRaw={false} hideBadge={true} />
-                          </div>
+                          </>
                         ) : (
                           <div className="text-gray-500">No METAR available</div>
                         )}
                       </div>
+                      <hr className="my-2 border-gray-300 dark:border-gray-700" />
                       {/* TAF */}
-                      <div className="col-span-1">
+                      <div>
+                        <h3 className="text-base font-semibold mb-1">TAF</h3>
                         {s.weather?.taf ? (
-                          <div className="card p-3 h-full flex flex-col">
-                            <h3 className="text-base font-semibold mb-1">TAF</h3>
-                            <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
-                          </div>
+                          <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
                         ) : (
                           <div className="text-gray-500">No TAF available</div>
                         )}
                       </div>
+                      <hr className="my-2 border-gray-300 dark:border-gray-700" />
                       {/* NOTAMs */}
-                      <div className="col-span-1">
-                        <div className="card p-3 h-full flex flex-col">
-                          <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
-                          <NotamDisplay icao={s.icao} />
-                        </div>
+                      <div>
+                        <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
+                        <NotamDisplay icao={s.icao} />
                       </div>
                     </div>
                   </li>
@@ -698,40 +694,38 @@ function App() {
                 <h2 className="text-lg font-semibold mb-2">Alternate Airports Weather & NOTAMs</h2>
                 <ul>
                   {alternateStations.map((s, idx) => (
-                    <li key={s.icao || idx} className="mb-8">
-                      <div className="mb-2">
-                        <b>{s.icao}</b> {s.name && `- ${s.name}`}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <li key={s.icao || idx} className="mb-4">
+                      <div className="card p-4 space-y-4">
+                        <div className="mb-2">
+                          <span className="font-bold text-lg">{s.icao}</span> {s.name && <span className="text-base ml-2">- {s.name}</span>}
+                        </div>
                         {/* METAR */}
-                        <div className="col-span-1">
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">METAR</h3>
                           {s.weather?.metar ? (
-                            <div className="card p-3 h-full flex flex-col">
-                              <h3 className="text-base font-semibold mb-1">METAR</h3>
+                            <>
                               <FlightCategoryBadge category={s.weather.metar.flight_category} />
                               <MetarDisplay data={s.weather.metar} icao={s.icao} hideRaw={false} hideBadge={true} />
-                            </div>
+                            </>
                           ) : (
                             <div className="text-gray-500">No METAR available</div>
                           )}
                         </div>
+                        <hr className="my-2 border-gray-300 dark:border-gray-700" />
                         {/* TAF */}
-                        <div className="col-span-1">
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">TAF</h3>
                           {s.weather?.taf ? (
-                            <div className="card p-3 h-full flex flex-col">
-                              <h3 className="text-base font-semibold mb-1">TAF</h3>
-                              <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
-                            </div>
+                            <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
                           ) : (
                             <div className="text-gray-500">No TAF available</div>
                           )}
                         </div>
+                        <hr className="my-2 border-gray-300 dark:border-gray-700" />
                         {/* NOTAMs */}
-                        <div className="col-span-1">
-                          <div className="card p-3 h-full flex flex-col">
-                            <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
-                            <NotamDisplay icao={s.icao} />
-                          </div>
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
+                          <NotamDisplay icao={s.icao} />
                         </div>
                       </div>
                     </li>
