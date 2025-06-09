@@ -399,8 +399,11 @@ function App() {
 
   function RoutePlannerPage() {
     const [route, setRoute] = React.useState('');
+    const [alternates, setAlternates] = React.useState('');
     const [submittedRoute, setSubmittedRoute] = React.useState<string[]>([]);
+    const [submittedAlternates, setSubmittedAlternates] = React.useState<string[]>([]);
     const [stations, setStations] = React.useState<any[]>([]);
+    const [alternateStations, setAlternateStations] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -410,7 +413,13 @@ function App() {
         .split(/[^A-Z0-9]+/)
         .map(code => code.trim())
         .filter(code => code.length === 4);
+      const altIcaos = alternates
+        .toUpperCase()
+        .split(/[^A-Z0-9]+/)
+        .map(code => code.trim())
+        .filter(code => code.length === 4);
       setSubmittedRoute(icaos);
+      setSubmittedAlternates(altIcaos);
       setLoading(true);
       // Fetch station data for each ICAO
       const results = await Promise.all(
@@ -425,6 +434,19 @@ function App() {
         })
       );
       setStations(results.filter(Boolean));
+      // Fetch alternates
+      const altResults = await Promise.all(
+        altIcaos.map(async (icao) => {
+          try {
+            const station = await fetchStationData(icao);
+            const weather = await fetchWeatherData(icao);
+            return { ...station, weather };
+          } catch {
+            return null;
+          }
+        })
+      );
+      setAlternateStations(altResults.filter(Boolean));
       setLoading(false);
     };
 
@@ -444,6 +466,14 @@ function App() {
             placeholder="CYWG YWG V300 YQT CYQT"
             value={route}
             onChange={e => setRoute(e.target.value)}
+          />
+          <label className="block mb-2 font-semibold mt-4">Enter alternate airports (ICAO codes separated by space or comma):</label>
+          <input
+            type="text"
+            className="input w-full max-w-lg mb-2"
+            placeholder="CYQT CYYZ"
+            value={alternates}
+            onChange={e => setAlternates(e.target.value)}
           />
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded shadow transition-colors text-sm">Plan Route</button>
         </form>
@@ -470,23 +500,62 @@ function App() {
                 </MapContainer>
               </div>
             </div>
-            <div className="card">
-              <h2 className="text-lg font-semibold mb-2">Route Weather</h2>
+            <div className="card mb-4">
+              <h2 className="text-lg font-semibold mb-2">Route Weather & NOTAMs</h2>
               <ul>
                 {stations.map((s, idx) => (
-                  <li key={s.icao || idx} className="mb-2">
+                  <li key={s.icao || idx} className="mb-4">
                     <b>{s.icao}</b> {s.name && `- ${s.name}`}
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       {s.weather?.metar?.raw ? (
-                        <span>METAR: {s.weather.metar.raw}</span>
+                        <div>METAR: {s.weather.metar.raw}</div>
                       ) : (
-                        <span>No METAR available</span>
+                        <div>No METAR available</div>
+                      )}
+                      {s.weather?.taf?.raw ? (
+                        <div>TAF: {s.weather.taf.raw}</div>
+                      ) : (
+                        <div>No TAF available</div>
+                      )}
+                      {s.weather?.notam ? (
+                        <div>NOTAMs: {Array.isArray(s.weather.notam) ? s.weather.notam.join('; ') : s.weather.notam}</div>
+                      ) : (
+                        <div>No NOTAMs available</div>
                       )}
                     </div>
                   </li>
                 ))}
               </ul>
             </div>
+            {alternateStations.length > 0 && (
+              <div className="card">
+                <h2 className="text-lg font-semibold mb-2">Alternate Airports Weather & NOTAMs</h2>
+                <ul>
+                  {alternateStations.map((s, idx) => (
+                    <li key={s.icao || idx} className="mb-4">
+                      <b>{s.icao}</b> {s.name && `- ${s.name}`}
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {s.weather?.metar?.raw ? (
+                          <div>METAR: {s.weather.metar.raw}</div>
+                        ) : (
+                          <div>No METAR available</div>
+                        )}
+                        {s.weather?.taf?.raw ? (
+                          <div>TAF: {s.weather.taf.raw}</div>
+                        ) : (
+                          <div>No TAF available</div>
+                        )}
+                        {s.weather?.notam ? (
+                          <div>NOTAMs: {Array.isArray(s.weather.notam) ? s.weather.notam.join('; ') : s.weather.notam}</div>
+                        ) : (
+                          <div>No NOTAMs available</div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>
