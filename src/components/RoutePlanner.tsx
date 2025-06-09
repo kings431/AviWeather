@@ -4,13 +4,23 @@ import { useRouteStore } from '../store/routeStore';
 import { fetchWeatherData, fetchStationData } from '../services/weatherApi';
 import { RouteOptimizer } from '../services/routeOptimizer';
 import { Route } from '../types';
-import ErrorMessage from './ErrorMessage';
-import LoadingSpinner from './LoadingSpinner';
-import AirportAutocomplete from './AirportAutocomplete';
-import RouteMap from '../routeWeather/RouteMap';
-import RouteInputPanel from './RouteInputPanel';
-import RouteSummaryPanel from './RouteSummaryPanel';
-import RouteMapPanel from './RouteMapPanel';
+import { MapContainer, TileLayer, Marker, Polyline, LayersControl } from 'react-leaflet';
+import type { LatLngExpression } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { Plus, Minus, Search, Settings, ChevronDown, ChevronRight, Plane, Clock, Route as RouteIcon } from 'lucide-react';
+
+// Fix Leaflet's default icon path issues with bundlers
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 interface RoutePlannerProps {
   onRouteSelect: (route: Route) => void;
@@ -28,9 +38,7 @@ export interface RouteData {
   ete: number;
 }
 
-const OPENWEATHER_API_KEY = 'c4946a82d8310d8fba50607b5bc66d82';
-
-// --- Isolated fetchers for route planner ---
+// Isolated fetchers for route planner
 async function fetchWaypointLatLon(icao: string): Promise<{ lat: number; lon: number } | null> {
   try {
     const res = await fetch(`/api/openaip?icao=${icao}`);
@@ -46,63 +54,32 @@ async function fetchWaypointLatLon(icao: string): Promise<{ lat: number; lon: nu
     return null;
   }
 }
+
 async function fetchMetar(icao: string) {
   const res = await fetch(`/api/metar?icao=${icao}`);
   return res.ok ? res.json() : null;
 }
-async function fetchTaf(icao: string) {
-  const res = await fetch(`/api/taf?icao=${icao}`);
-  return res.ok ? res.json() : null;
-}
-async function fetchNotam(icao: string) {
-  const res = await fetch(`/api/notam?icao=${icao}`);
-  return res.ok ? res.json() : null;
-}
-async function fetchGfaLinks(icao: string) {
-  // Example: return array of GFA chart URLs for the region
-  return [`https://flightplanning.navcanada.ca/gfa/gfa_${icao}.png`];
-}
-async function fetchSigmetAirmet(icao: string) {
-  // Example: return array of SIGMET/AIRMET objects
-  return [];
-}
-async function fetchPireps(icao: string) {
-  // Example: return array of PIREP objects
-  return [];
-}
-async function fetchWeatherCam(icao: string) {
-  // Example: return { image, url }
-  return null;
-}
 
 const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
-  console.log('RoutePlanner render');
   const [waypoints, setWaypoints] = useState<Waypoint[]>([
     { icao: '' }, // Departure
     { icao: '' }, // Arrival
   ]);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const [metarData, setMetarData] = useState<Record<string, any>>({});
   const [tafData, setTafData] = useState<Record<string, any>>({});
-  const [notamData, setNotamData] = useState<Record<string, any>>({});
-  const [gfaLinks, setGfaLinks] = useState<string[][]>([]);
-  const [sigmetData, setSigmetData] = useState<any[][]>([]);
-  const [airmetData, setAirmetData] = useState<any[][]>([]);
-  const [pirepData, setPirepData] = useState<any[][]>([]);
-  const [weatherCams, setWeatherCams] = useState<Record<string, { image: string; url: string }>>({});
   const [validation, setValidation] = useState<boolean[]>([true, true]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestedRoute, setSuggestedRoute] = useState<Route | null>(null);
   const [weatherData, setWeatherData] = useState<any>(null);
-  const [optimizationCriteria, setOptimizationCriteria] = useState({
-    minDistance: true,
-    avoidWeather: true,
-    preferAirways: true,
-    maxAltitude: 18000
+  const [expandedSections, setExpandedSections] = useState({
+    metar: true,
+    taf: false,
+    gfa: false,
+    sigmet: false,
+    airmet: false
   });
-  const [weatherToggles, setWeatherToggles] = useState<string[]>(['METAR', 'TAF', 'NOTAM']);
 
   const { favorites } = useStore();
   const { setCurrentRoute, setAlternateAirports, setLoading, setError: setRouteError } = useRouteStore();
@@ -149,27 +126,18 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     setValidation(v => v.filter((_, i) => i !== idx));
   };
 
-  const handleVoiceInput = (icao: string) => {
-    if (!('webkitSpeechRecognition' in window)) return alert('Voice input not supported');
-    const recognition = new (window as any).webkitSpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.replace(/\s/g, '').toUpperCase();
-      if (/^[A-Z0-9]{4}$/.test(transcript)) {
-        const idx = waypoints.findIndex(wp => wp.icao === icao);
-        if (idx !== -1) handleWaypointChange(idx, transcript);
-      }
-    };
-    recognition.start();
-  };
-
   const findRoute = async () => {
     setLoading(true);
     setError(null);
+    
     // Validate ICAOs
     const valid = waypoints.map(wp => /^[A-Z0-9]{4}$/.test(wp.icao));
     setValidation(valid);
-    if (valid.some(v => !v)) { setLoading(false); return; }
+    if (valid.some(v => !v)) { 
+      setLoading(false); 
+      return; 
+    }
+
     // Fetch lat/lon for each waypoint
     const wpsWithCoords = await Promise.all(
       waypoints.map(async wp => {
@@ -177,55 +145,40 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
         return coords ? { ...wp, ...coords } : { ...wp };
       })
     );
+
     if (wpsWithCoords.some(wp => typeof wp.lat !== 'number' || typeof wp.lon !== 'number')) {
       setError('One or more ICAOs not found.');
       setLoading(false);
       return;
     }
+
     setWaypoints(wpsWithCoords);
-    // Calculate distance (great-circle) and ETE (assume 120kt)
+
+    // Calculate distance (great-circle) and ETE
     let distance = 0;
     for (let i = 1; i < wpsWithCoords.length; i++) {
       if (typeof wpsWithCoords[i - 1].lat === 'number' && typeof wpsWithCoords[i - 1].lon === 'number' && typeof wpsWithCoords[i].lat === 'number' && typeof wpsWithCoords[i].lon === 'number') {
         distance += haversine(wpsWithCoords[i - 1] as { lat: number; lon: number }, wpsWithCoords[i] as { lat: number; lon: number });
       }
     }
-    const ete = Math.round(distance / 120 * 60);
+    const ete = Math.round(distance / cruiseSpeed * 60);
     setRouteData({ waypoints: wpsWithCoords, distance: Math.round(distance), ete });
-    // Fetch all weather data for each waypoint
+
+    // Fetch weather data for each waypoint
     const metar: Record<string, any> = {};
     const taf: Record<string, any> = {};
-    const notam: Record<string, any> = {};
-    const gfa: string[][] = [];
-    const sigmet: any[][] = [];
-    const airmet: any[][] = [];
-    const pirep: any[][] = [];
-    const cams: Record<string, { image: string; url: string }> = {};
-    await Promise.all(wpsWithCoords.map(async (wp, idx) => {
+    
+    await Promise.all(wpsWithCoords.map(async (wp) => {
       metar[wp.icao] = await fetchMetar(wp.icao);
-      taf[wp.icao] = await fetchTaf(wp.icao);
-      notam[wp.icao] = await fetchNotam(wp.icao);
-      gfa[idx] = await fetchGfaLinks(wp.icao);
-      sigmet[idx] = await fetchSigmetAirmet(wp.icao);
-      airmet[idx] = await fetchSigmetAirmet(wp.icao); // For demo, same as sigmet
-      pirep[idx] = await fetchPireps(wp.icao);
-      const cam = await fetchWeatherCam(wp.icao);
-      if (cam) cams[wp.icao] = cam;
     }));
+
     setMetarData(metar);
     setTafData(taf);
-    setNotamData(notam);
-    setGfaLinks(gfa);
-    setSigmetData(sigmet);
-    setAirmetData(airmet);
-    setPirepData(pirep);
-    setWeatherCams(cams);
     setLoading(false);
 
     try {
       const optimizer = RouteOptimizer.getInstance();
-      const route = await optimizer.optimizeRoute(wpsWithCoords[0].icao, wpsWithCoords[wpsWithCoords.length - 1].icao, optimizationCriteria);
-      console.log('Route calculated', route);
+      const route = await optimizer.optimizeRoute(wpsWithCoords[0].icao, wpsWithCoords[wpsWithCoords.length - 1].icao, {});
       const estimatedTime = cruiseSpeed > 0 ? Math.round(route.distance / cruiseSpeed * 60) : 0;
       const newRoute = { ...route, estimatedTime };
       setRouteData({
@@ -237,15 +190,12 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       onRouteSelect(newRoute);
       setCurrentRoute(newRoute);
 
-      // Fetch weather data for the route
       const weather = await fetchWeatherData(wpsWithCoords[0].icao);
-      console.log('Weather fetched', weather);
       setWeatherData(weather);
       setMetarData(weather.metar ? { [wpsWithCoords[0].icao]: weather.metar } : {});
       setTafData(weather.taf ? { [wpsWithCoords[0].icao]: weather.taf } : {});
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to calculate route';
-      console.error('Route calculation error', err);
       setError(errorMessage);
       setRouteError(errorMessage);
     }
@@ -263,108 +213,318 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
   }
 
-  const handleExportGPX = () => {
-    const gpx = `<?xml version="1.0"?><gpx version="1.1" creator="AviWeather"><trk><trkseg>${waypoints
-      .map(wp => wp.lat && wp.lon ? `<trkpt lat="${wp.lat}" lon="${wp.lon}"><name>${wp.icao}</name></trkpt>` : '')
-      .join('')}</trkseg></trk></gpx>`;
-    const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'route.gpx';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const position: LatLngExpression = waypoints.length > 0 && waypoints[0].lat && waypoints[0].lon
+    ? [waypoints[0].lat, waypoints[0].lon]
+    : [49.91, -97.24];
 
-  const handleExportJSON = () => {
-    const blob = new Blob([JSON.stringify({ waypoints, routeData }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'route.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const positions = waypoints.filter(wp => wp.lat && wp.lon).map(wp => [wp.lat!, wp.lon!] as [number, number]);
 
-  const handleShareRoute = () => {
-    const encoded = btoa(JSON.stringify(waypoints.map(wp => wp.icao)));
-    const url = `${window.location.origin}/route?data=${encoded}`;
-    navigator.clipboard.writeText(url);
-    alert('Route URL copied to clipboard!');
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
-
-  useEffect(() => {
-    console.log('[RoutePlanner] suggestedRoute:', suggestedRoute);
-  }, [suggestedRoute]);
-  useEffect(() => {
-    console.log('[RoutePlanner] currentRoute:', useRouteStore.getState().currentRoute);
-  }, [useRouteStore.getState().currentRoute]);
 
   return (
-    <div className="flex flex-col md:flex-row w-full min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 gap-0 md:gap-8 pt-16">
-      {/* Left: Input + Summary */}
-      <div className="min-w-[340px] w-full md:w-[400px] max-w-[480px] flex-shrink-0 p-6 md:p-8 bg-white dark:bg-slate-900 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 min-h-[calc(100vh-4rem)]">
-        <div className="mb-8 w-full">
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight">Route Planner</h2>
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-6 w-full">
-            <RouteInputPanel
-              waypoints={waypoints}
-              onWaypointChange={handleWaypointChange}
-              onAddWaypoint={addWaypoint}
-              onRemoveWaypoint={removeWaypoint}
-              onFindRoute={findRoute}
-              onExportGPX={handleExportGPX}
-              onExportJSON={handleExportJSON}
-              onVoiceInput={handleVoiceInput}
-              onShareRoute={handleShareRoute}
-              validation={validation}
-            />
+    <div className="min-h-screen bg-slate-900 text-white">
+      {/* Header */}
+      <div className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                <Plane className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold">AviWeather</h1>
+                <p className="text-sm text-slate-400">Aviation Weather for Pilots</p>
+              </div>
+            </div>
+            <div className="text-lg font-medium text-blue-400">Route Planner</div>
           </div>
-        </div>
-        <div className="mb-8 w-full">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Route Summary</h3>
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl shadow-lg p-6 w-full">
-            <RouteSummaryPanel
-              waypoints={waypoints}
-              routeData={routeData}
-              selectedMarker={selectedMarker}
-              metarData={metarData}
-              tafData={tafData}
-              notamData={notamData}
-              gfaLinks={gfaLinks.flat()}
-              sigmetData={sigmetData.flat()}
-              airmetData={airmetData.flat()}
-              pirepData={pirepData.flat()}
-              weatherCams={weatherCams}
-              onExportGPX={handleExportGPX}
-              onExportJSON={handleExportJSON}
-              onShareRoute={handleShareRoute}
-            />
-            {isLoading && <div className="text-blue-500 dark:text-blue-400 mt-4">Loading route and weather...</div>}
-            {error && <div className="text-red-500 dark:text-red-400 mt-4">{error}</div>}
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search by ICAO code (e.g., KJFK)"
+                className="bg-slate-700 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
+              />
+            </div>
+            <button className="p-2 text-slate-400 hover:text-white">
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
-      {/* Right: Map */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <div className="w-full h-[400px] md:h-[600px] max-w-[900px] bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center">
-          <RouteMapPanel
-            waypoints={waypoints}
-            routeData={routeData}
-            selectedMarker={selectedMarker}
-            onMarkerClick={setSelectedMarker}
-            metarData={metarData}
-            tafData={tafData}
-            sigmetData={sigmetData.flat()}
-            airmetData={airmetData.flat()}
-            pirepData={pirepData.flat()}
-            weatherCams={weatherCams}
-            gfaLinks={gfaLinks.flat()}
-          />
+
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Left Sidebar - Route Planning */}
+        <div className="w-80 bg-slate-800 border-r border-slate-700 flex flex-col">
+          {/* Route Section */}
+          <div className="p-6 border-b border-slate-700">
+            <h2 className="text-lg font-semibold mb-4 flex items-center">
+              <RouteIcon className="w-5 h-5 mr-2" />
+              Route
+            </h2>
+            
+            {/* From */}
+            <div className="mb-4">
+              <label className="block text-sm text-slate-400 mb-2">From</label>
+              <input
+                type="text"
+                value={waypoints[0]?.icao || ''}
+                onChange={(e) => handleWaypointChange(0, e.target.value)}
+                maxLength={4}
+                className={`w-full bg-slate-700 border ${validation[0] === false ? 'border-red-500' : 'border-slate-600'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                placeholder="ICAO"
+              />
+            </div>
+
+            {/* Add Waypoint Button */}
+            <div className="mb-4 flex justify-center">
+              <button
+                onClick={addWaypoint}
+                className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Waypoint</span>
+              </button>
+            </div>
+
+            {/* Intermediate Waypoints */}
+            {waypoints.slice(1, -1).map((wp, idx) => (
+              <div key={idx + 1} className="mb-4 flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={wp.icao}
+                  onChange={(e) => handleWaypointChange(idx + 1, e.target.value)}
+                  maxLength={4}
+                  className={`flex-1 bg-slate-700 border ${validation[idx + 1] === false ? 'border-red-500' : 'border-slate-600'} rounded-lg px-3 py-2 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  placeholder="ICAO"
+                />
+                <button
+                  onClick={() => removeWaypoint(idx + 1)}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            {/* To */}
+            <div className="mb-6">
+              <label className="block text-sm text-slate-400 mb-2">To</label>
+              <input
+                type="text"
+                value={waypoints[waypoints.length - 1]?.icao || ''}
+                onChange={(e) => handleWaypointChange(waypoints.length - 1, e.target.value)}
+                maxLength={4}
+                className={`w-full bg-slate-700 border ${validation[waypoints.length - 1] === false ? 'border-red-500' : 'border-slate-600'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                placeholder="ICAO"
+              />
+            </div>
+
+            {/* Find Route Button */}
+            <button
+              onClick={findRoute}
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-medium py-3 rounded-lg transition-colors"
+            >
+              {isLoading ? 'Finding Route...' : 'Find Route'}
+            </button>
+
+            {/* Route Summary */}
+            {routeData && (
+              <div className="mt-6 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Distance:</span>
+                  <span className="font-mono">{routeData.distance} nm</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">ETE:</span>
+                  <span className="font-mono flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {Math.floor(routeData.ete / 60)}h {routeData.ete % 60}m
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Route Details */}
+          {routeData && (
+            <div className="p-6">
+              <div className="space-y-2">
+                {waypoints.map((wp, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-2">
+                    <div>
+                      <div className="font-mono text-sm">{wp.icao}</div>
+                      <div className="text-xs text-slate-400">
+                        {idx === 0 ? 'From' : idx === waypoints.length - 1 ? 'To' : 'Via'}
+                      </div>
+                    </div>
+                    {wp.lat && wp.lon && (
+                      <div className="text-xs text-slate-400 font-mono">
+                        {wp.lat.toFixed(2)}, {wp.lon.toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Center - Map */}
+        <div className="flex-1 relative">
+          <MapContainer 
+            center={position} 
+            zoom={6} 
+            scrollWheelZoom={true}
+            className="w-full h-full"
+            style={{ background: '#1e293b' }}
+          >
+            <LayersControl position="topright">
+              <LayersControl.BaseLayer checked name="Dark">
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+                />
+              </LayersControl.BaseLayer>
+              <LayersControl.BaseLayer name="Satellite">
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution="Tiles &copy; Esri"
+                />
+              </LayersControl.BaseLayer>
+              <LayersControl.Overlay name="Weather Radar">
+                <TileLayer
+                  url="https://tilecache.rainviewer.com/v2/radar/{z}/{x}/{y}/256/6/1_1.png"
+                  attribution="Radar &copy; RainViewer"
+                  opacity={0.6}
+                />
+              </LayersControl.Overlay>
+            </LayersControl>
+            
+            {positions.length > 1 && (
+              <Polyline 
+                positions={positions} 
+                color="#3b82f6" 
+                weight={3}
+                opacity={0.8}
+              />
+            )}
+            
+            {waypoints.map((wp, idx) =>
+              wp.lat && wp.lon ? (
+                <Marker key={wp.icao + idx} position={[wp.lat, wp.lon]}>
+                </Marker>
+              ) : null
+            )}
+          </MapContainer>
+        </div>
+
+        {/* Right Sidebar - Weather */}
+        <div className="w-96 bg-slate-800 border-l border-slate-700 overflow-y-auto">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center justify-between">
+              Weather
+              <ChevronRight className="w-5 h-5" />
+            </h2>
+
+            {/* METAR Section */}
+            <div className="mb-4">
+              <button
+                onClick={() => toggleSection('metar')}
+                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                <span className="font-medium">METAR</span>
+                {expandedSections.metar ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+              
+              {expandedSections.metar && (
+                <div className="mt-2 space-y-3">
+                  {waypoints.filter(wp => wp.icao).map((wp) => (
+                    <div key={wp.icao} className="bg-slate-700 rounded-lg p-3">
+                      <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
+                      <div className="text-xs text-slate-300 font-mono leading-relaxed">
+                        {metarData[wp.icao]?.latestMetar?.text || 'Loading...'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* TAF Section */}
+            <div className="mb-4">
+              <button
+                onClick={() => toggleSection('taf')}
+                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                <span className="font-medium">TAF</span>
+                {expandedSections.taf ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+              
+              {expandedSections.taf && (
+                <div className="mt-2 space-y-3">
+                  {waypoints.filter(wp => wp.icao).map((wp) => (
+                    <div key={wp.icao} className="bg-slate-700 rounded-lg p-3">
+                      <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
+                      <div className="text-xs text-slate-300 font-mono leading-relaxed">
+                        {tafData[wp.icao]?.raw || 'No TAF available'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* GFA Section */}
+            <div className="mb-4">
+              <button
+                onClick={() => toggleSection('gfa')}
+                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                <span className="font-medium">GFA</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* SIGMET Section */}
+            <div className="mb-4">
+              <button
+                onClick={() => toggleSection('sigmet')}
+                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                <span className="font-medium">SIGMET</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* AIRMET Section */}
+            <div className="mb-4">
+              <button
+                onClick={() => toggleSection('airmet')}
+                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                <span className="font-medium">AIRMET</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default RoutePlanner; 
+export default RoutePlanner;
