@@ -33,6 +33,8 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   const [waypointCoords, setWaypointCoords] = useState<{ icao: string; lat: number; lon: number }[]>([]);
   const [alternateCoords, setAlternateCoords] = useState<{ icao: string; lat: number; lon: number }[]>([]);
   const [weatherToggles, setWeatherToggles] = useState<WeatherToggleType[]>(['METAR', 'TAF', 'NOTAM']);
+  const [pendingDeparture, setPendingDeparture] = useState<string>('');
+  const [pendingArrival, setPendingArrival] = useState<string>('');
 
   const { favorites } = useStore();
   const { setCurrentRoute, setAlternateAirports, setLoading, setError: setRouteError } = useRouteStore();
@@ -61,18 +63,20 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   }, [selectedAircraft]);
 
   const handleDepartureChange = (value: string) => {
-    const upperValue = value.toUpperCase();
-    setDeparture(upperValue);
-    if (upperValue.length === 4 && arrival.length === 4) {
-      calculateRoute(upperValue, arrival);
-    }
+    setPendingDeparture(value.toUpperCase());
   };
 
   const handleArrivalChange = (value: string) => {
-    const upperValue = value.toUpperCase();
-    setArrival(upperValue);
-    if (departure.length === 4 && upperValue.length === 4) {
-      calculateRoute(departure, upperValue);
+    setPendingArrival(value.toUpperCase());
+  };
+
+  const handleSearchRoute = () => {
+    if (pendingDeparture.length === 4 && pendingArrival.length === 4) {
+      setDeparture(pendingDeparture);
+      setArrival(pendingArrival);
+      calculateRoute(pendingDeparture, pendingArrival);
+    } else {
+      setError('Please enter valid 4-letter ICAO codes for both departure and arrival.');
     }
   };
 
@@ -167,24 +171,39 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
           <label className="block text-sm font-medium mb-2">Departure</label>
           <input
             type="text"
-            value={departure}
+            value={pendingDeparture}
             onChange={(e) => handleDepartureChange(e.target.value)}
             className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
             placeholder="Enter ICAO code"
+            maxLength={4}
           />
         </div>
-        
         <div>
           <label className="block text-sm font-medium mb-2">Arrival</label>
           <input
             type="text"
-            value={arrival}
+            value={pendingArrival}
             onChange={(e) => handleArrivalChange(e.target.value)}
             className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
             placeholder="Enter ICAO code"
+            maxLength={4}
           />
         </div>
       </div>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2">Alternate Airports</label>
+        <AirportAutocomplete
+          onSelect={addAlternate}
+          exclude={[pendingDeparture, pendingArrival, ...alternates].filter(Boolean)}
+          placeholder="Add alternate airport (ICAO)"
+        />
+      </div>
+      <button
+        className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition mb-6"
+        onClick={handleSearchRoute}
+      >
+        Search Route
+      </button>
 
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-2">Route Optimization</h3>
@@ -307,30 +326,6 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
           </div>
         </div>
       )}
-
-      <div className="mt-4">
-        <h3 className="text-lg font-semibold mb-2">Alternate Airports</h3>
-        <div className="mb-2">
-          <AirportAutocomplete
-            onSelect={addAlternate}
-            exclude={[departure, arrival, ...alternates].filter(Boolean)}
-            placeholder="Add alternate airport (ICAO)"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {alternates.map(icao => (
-            <div key={icao} className="flex items-center bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded">
-              <span>{icao}</span>
-              <button
-                onClick={() => removeAlternate(icao)}
-                className="ml-2 text-red-500 hover:text-red-700"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }; 
