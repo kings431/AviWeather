@@ -451,16 +451,27 @@ function App() {
     // Add state for approach type selection for each alternate
     const [alternateApproachTypes, setAlternateApproachTypes] = React.useState<Record<string, string>>({});
 
-    // Helper: Calculate alternate suitability per CAP GEN
-    function calculateAlternate(
+    // Add state for HAT/HAA and standard minima for each alternate
+    const [alternateHAT, setAlternateHAT] = React.useState<Record<string, string>>({});
+    const [alternateStandardMinima, setAlternateStandardMinima] = React.useState<Record<string, boolean>>({});
+
+    // Helper: CAP GEN ceiling rounding
+    function roundCeiling(val: number) {
+      const rem = val % 100;
+      if (rem <= 20) return val - rem;
+      return val - rem + 100;
+    }
+
+    // Helper: Calculate alternate suitability per full CAP GEN
+    function calculateAlternateFull(
       taf: { periods?: any[] },
       approachType: string,
+      hatHaa: string,
+      useStandardMinima: boolean,
       minIfrAlt: number = 0
     ) {
-      if (!taf || !taf.periods || taf.periods.length === 0) return { qualifies: false, reason: 'No TAF data', usedPeriod: null };
-      // Use the first period (or let user select ETA in future)
+      if (!taf || !taf.periods || taf.periods.length === 0) return { qualifies: false, reason: 'No TAF data', usedPeriod: null, breakdown: 'No TAF data.' };
       const period = taf.periods[0] as any;
-      // Find lowest BKN/OVC
       let ceiling = null;
       if (period.clouds && period.clouds.length > 0) {
         const bknOvc = period.clouds.filter((c: any) => c.type === 'BKN' || c.type === 'OVC');
@@ -468,22 +479,47 @@ function App() {
           ceiling = Math.min(...bknOvc.map((c: any) => c.height));
         }
       }
-      // Find visibility
       const vis = period.visibility?.value || null;
-      // Set minima
-      let requiredCeiling, requiredVis, criteria = '';
-      if (approachType === 'precision') {
-        requiredCeiling = 600;
-        requiredVis = 2;
-        criteria = 'Precision Approach: Ceiling ≥ 600 ft, Visibility ≥ 2 SM';
+      const hat = hatHaa ? parseInt(hatHaa, 10) : undefined;
+      let requiredCeiling = 0, requiredVis = 0, rule = '', breakdown = '';
+      // Table logic
+      if (approachType === 'two-precision') {
+        // 400-1 or 200-1/2 above lowest HAT, whichever is greater
+        let c1 = 400, v1 = 1;
+        let c2 = hat !== undefined ? roundCeiling(200 + hat) : 400, v2 = 0.5;
+        requiredCeiling = Math.max(c1, c2);
+        requiredVis = Math.max(v1, v2);
+        rule = 'Two or More Usable Precision Approaches';
+        breakdown = `Rule: ${rule}\nOption 1: 400-1\nOption 2: 200-1/2 above HAT (${hat ?? 'N/A'}) = ${c2}-${v2}\nSelected: ${requiredCeiling}-${requiredVis}`;
+      } else if (approachType === 'precision') {
+        // 600-2 or 300-1 above HAT, whichever is greater
+        let c1 = 600, v1 = 2;
+        let c2 = hat !== undefined ? roundCeiling(300 + hat) : 600, v2 = 1;
+        requiredCeiling = Math.max(c1, c2);
+        requiredVis = Math.max(v1, v2);
+        rule = 'One Usable Precision Approach';
+        breakdown = `Rule: ${rule}\nOption 1: 600-2\nOption 2: 300-1 above HAT (${hat ?? 'N/A'}) = ${c2}-${v2}\nSelected: ${requiredCeiling}-${requiredVis}`;
       } else if (approachType === 'non-precision') {
-        requiredCeiling = 800;
-        requiredVis = 2;
-        criteria = 'Non-Precision Approach: Ceiling ≥ 800 ft, Visibility ≥ 2 SM';
+        // 800-2 or 300-1 above HAT/HAA, whichever is greater
+        let c1 = 800, v1 = 2;
+        let c2 = hat !== undefined ? roundCeiling(300 + hat) : 800, v2 = 1;
+        requiredCeiling = Math.max(c1, c2);
+        requiredVis = Math.max(v1, v2);
+        rule = 'Non-Precision Only Available';
+        breakdown = `Rule: ${rule}\nOption 1: 800-2\nOption 2: 300-1 above HAT/HAA (${hat ?? 'N/A'}) = ${c2}-${v2}\nSelected: ${requiredCeiling}-${requiredVis}`;
       } else {
+        // No IFR approach
         requiredCeiling = minIfrAlt + 500;
         requiredVis = 3;
-        criteria = 'No Instrument Approach: Ceiling ≥ 500 ft above min IFR altitude, Visibility ≥ 3 SM';
+        rule = 'No IFR Approach Available';
+        breakdown = `Rule: ${rule}\nCeiling: 500 ft above min IFR altitude (${minIfrAlt}) = ${requiredCeiling}\nVisibility: 3 SM`;
+      }
+      // Standard minima table
+      let minimaTable = '';
+      if (useStandardMinima && (approachType === 'precision' || approachType === 'non-precision')) {
+        minimaTable = '\nStandard minima authorized:';
+        if (requiredCeiling === 600) minimaTable += '\n- 700-1.5\n- 800-1';
+        if (requiredCeiling === 800) minimaTable += '\n- 900-1.5\n- 1000-1';
       }
       // Check for TEMPO/PROB30 below limits
       const disqualifyingTempo = taf.periods.some((p: any) =>
@@ -492,15 +528,15 @@ function App() {
          (p.visibility && p.visibility.value < requiredVis))
       );
       if (disqualifyingTempo) {
-        return { qualifies: false, reason: 'TEMPO/PROB30 below limits in TAF', usedPeriod: period, criteria };
+        return { qualifies: false, reason: 'TEMPO/PROB30 below limits in TAF', usedPeriod: period, breakdown: breakdown + minimaTable };
       }
       if (ceiling === null || vis === null) {
-        return { qualifies: false, reason: 'No ceiling/visibility in TAF', usedPeriod: period, criteria };
+        return { qualifies: false, reason: 'No ceiling/visibility in TAF', usedPeriod: period, breakdown: breakdown + minimaTable };
       }
       if (ceiling >= requiredCeiling && vis >= requiredVis) {
-        return { qualifies: true, reason: 'Meets alternate minima', usedPeriod: period, criteria };
+        return { qualifies: true, reason: 'Meets alternate minima', usedPeriod: period, breakdown: breakdown + minimaTable + `\nForecast: Ceiling ${ceiling} ft, Vis ${vis} SM` };
       }
-      return { qualifies: false, reason: `Ceiling or visibility below minima (Ceiling: ${ceiling} ft, Vis: ${vis} SM)`, usedPeriod: period, criteria };
+      return { qualifies: false, reason: `Ceiling or visibility below minima (Ceiling: ${ceiling} ft, Vis: ${vis} SM)`, usedPeriod: period, breakdown: breakdown + minimaTable + `\nForecast: Ceiling ${ceiling} ft, Vis ${vis} SM` };
     }
 
     // Fetch RainViewer radar timestamps on mount
@@ -587,6 +623,72 @@ function App() {
     return (
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
         <h1 className="text-2xl font-bold mb-4">Route Planner</h1>
+        {/* Alternate Suitability Summary Banner */}
+        {alternateStations.length > 0 && (
+          <div className="card p-4 mb-6">
+            <h2 className="text-lg font-semibold mb-3">Alternate Suitability (CAP GEN)</h2>
+            <div className="flex flex-col gap-4">
+              {alternateStations.map((s, idx) => {
+                const approachType = alternateApproachTypes[s.icao] || 'non-precision';
+                const taf = s.weather?.taf;
+                const hatHaa = alternateHAT[s.icao] || '';
+                const useStandardMinima = alternateStandardMinima[s.icao] || false;
+                const altResult = calculateAlternateFull(taf, approachType, hatHaa, useStandardMinima, 0);
+                return (
+                  <div key={s.icao || idx} className="flex flex-col md:flex-row md:items-center md:gap-6 gap-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700 pb-4 last:pb-0">
+                    <div className="flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                      <span className="font-bold text-base md:text-lg">{s.icao}</span>
+                      {s.name && <span className="text-base text-gray-600 dark:text-gray-300">- {s.name}</span>}
+                      <label className="text-sm font-medium ml-0 md:ml-4">Approach Type:</label>
+                      <select
+                        className="rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm"
+                        value={approachType}
+                        onChange={e => setAlternateApproachTypes(a => ({ ...a, [s.icao]: e.target.value }))}
+                      >
+                        <option value="two-precision">Two or More Precision</option>
+                        <option value="precision">One Precision</option>
+                        <option value="non-precision">Non-Precision</option>
+                        <option value="none">No IFR Approach</option>
+                      </select>
+                      {(approachType === 'two-precision' || approachType === 'precision' || approachType === 'non-precision') && (
+                        <>
+                          <label className="text-sm font-medium ml-2">Lowest HAT/HAA (ft):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-20 rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm"
+                            value={hatHaa}
+                            onChange={e => setAlternateHAT(a => ({ ...a, [s.icao]: e.target.value }))}
+                            placeholder="e.g. 250"
+                          />
+                        </>
+                      )}
+                      {(approachType === 'precision' || approachType === 'non-precision') && (
+                        <label className="flex items-center gap-2 ml-4 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={useStandardMinima}
+                            onChange={e => setAlternateStandardMinima(a => ({ ...a, [s.icao]: e.target.checked }))}
+                          />
+                          Standard minima authorized
+                        </label>
+                      )}
+                    </div>
+                    <div className={`rounded p-3 mt-2 md:mt-0 flex-1 ${altResult.qualifies ? 'bg-green-100 border border-green-400 text-green-900' : 'bg-red-100 border border-red-400 text-red-900'}`}> 
+                      <div className="font-semibold mb-1">Alternate Suitability: {altResult.qualifies ? 'QUALIFIES' : 'DOES NOT QUALIFY'}</div>
+                      <div className="text-xs mb-1">{altResult.breakdown}</div>
+                      <div className="text-xs">{altResult.reason}</div>
+                      {altResult.usedPeriod && (
+                        <div className="text-xs mt-1 text-gray-700">TAF Period Used: <span className="font-mono">{altResult.usedPeriod.raw}</span></div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-xs mt-4 italic text-gray-600">This alternate calculation is for reference only. Always verify with official sources and current regulations.</div>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="mb-6">
           <label className="block mb-2 font-semibold">Enter route (ICAO codes separated by space or comma):</label>
           <input
@@ -721,7 +823,7 @@ function App() {
                     .map((s, idx) => {
                       const approachType = alternateApproachTypes[s.icao] || 'non-precision';
                       const taf = s.weather?.taf;
-                      const altResult = calculateAlternate(taf, approachType, 0);
+                      const altResult = calculateAlternateFull(taf, approachType, '', false, 0);
                       return (
                         <Marker key={s.icao || idx} position={[s.latitude, s.longitude]} icon={greenIcon}>
                           <Popup>
@@ -816,25 +918,12 @@ function App() {
                   {alternateStations.map((s, idx) => {
                     const approachType = alternateApproachTypes[s.icao] || 'non-precision';
                     const taf = s.weather?.taf;
-                    const altResult = calculateAlternate(taf, approachType, 0);
+                    const altResult = calculateAlternateFull(taf, approachType, '', false, 0);
                     return (
                       <li key={s.icao || idx} className="mb-4">
                         <div className="card p-4 space-y-4">
                           <div className="mb-2">
                             <span className="font-bold text-lg">{s.icao}</span> {s.name && <span className="text-base ml-2">- {s.name}</span>}
-                          </div>
-                          {/* Approach type selector */}
-                          <div className="mb-2">
-                            <label className="text-sm font-medium mr-2">Approach Type:</label>
-                            <select
-                              className="rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm"
-                              value={approachType}
-                              onChange={e => setAlternateApproachTypes(a => ({ ...a, [s.icao]: e.target.value }))}
-                            >
-                              <option value="precision">Precision</option>
-                              <option value="non-precision">Non-Precision</option>
-                              <option value="none">No Instrument Approach</option>
-                            </select>
                           </div>
                           {/* METAR */}
                           {showMetar && (
@@ -895,16 +984,6 @@ function App() {
                               ))}
                             </div>
                           )}
-                          {/* Alternate calculation result */}
-                          <div className={`rounded p-3 mt-2 ${altResult.qualifies ? 'bg-green-100 border border-green-400 text-green-900' : 'bg-red-100 border border-red-400 text-red-900'}`}>
-                            <div className="font-semibold mb-1">Alternate Suitability: {altResult.qualifies ? 'QUALIFIES' : 'DOES NOT QUALIFY'}</div>
-                            <div className="text-xs mb-1">{altResult.criteria}</div>
-                            <div className="text-xs">{altResult.reason}</div>
-                            {altResult.usedPeriod && (
-                              <div className="text-xs mt-1 text-gray-700">TAF Period Used: <span className="font-mono">{altResult.usedPeriod.raw}</span></div>
-                            )}
-                            <div className="text-xs mt-2 italic text-gray-600">This alternate calculation is for reference only. Always verify with official sources and current regulations.</div>
-                          </div>
                         </div>
                       </li>
                     );
