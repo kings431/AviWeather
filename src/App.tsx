@@ -10,7 +10,7 @@ import ErrorMessage from './components/ErrorMessage';
 import useStore from './store';
 import { fetchWeatherData, fetchStationData, fetchOpenAipAirport, fetchNearestAirports } from './services/weatherApi';
 import RadarDisplay from './components/RadarDisplay';
-import { Plane } from 'lucide-react';
+import { Plane, Play, Pause } from 'lucide-react';
 import WeatherCameras from './components/WeatherCameras';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Routes, Route, useParams, Link } from 'react-router-dom';
@@ -424,6 +424,7 @@ function App() {
     const [radarTimestamps, setRadarTimestamps] = React.useState<number[]>([]);
     const [sigmetData, setSigmetData] = React.useState<any>(null);
     const [airmetData, setAirmetData] = React.useState<any>(null);
+    const [isPlaying, setIsPlaying] = React.useState(false);
 
     // Fetch RainViewer radar timestamps on mount
     React.useEffect(() => {
@@ -445,6 +446,17 @@ function App() {
         .then(res => res.json())
         .then(data => setAirmetData(data));
     }, []);
+
+    // Radar animation effect
+    React.useEffect(() => {
+      if (!isPlaying || radarTimestamps.length === 0) return;
+      const interval = setInterval(() => {
+        setRadarFrame((prev) => (prev + 1) % radarTimestamps.length);
+      }, 700);
+      return () => clearInterval(interval);
+    }, [isPlaying, radarTimestamps]);
+
+    const toggleRadarAnimation = () => setIsPlaying((p) => !p);
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -523,21 +535,36 @@ function App() {
             <div className="card mb-4">
               <h2 className="text-lg font-semibold mb-2">Route Map</h2>
               <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-2">
-                <label className="inline-flex items-center">
-                  <input type="checkbox" checked={showRadar} onChange={e => setShowRadar(e.target.checked)} className="mr-2" />
-                  Show Radar Overlay
+                <label className="flex items-center gap-2 text-white font-medium">
+                  <input
+                    type="checkbox"
+                    checked={showRadar}
+                    onChange={e => setShowRadar(e.target.checked)}
+                    className="accent-blue-500 w-5 h-5"
+                  />
+                  Show Radar
                 </label>
                 {showRadar && radarTimestamps.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs">Radar Time:</span>
+                  <div className="flex items-center gap-3 bg-gray-800 bg-opacity-80 rounded-lg px-3 py-2 shadow">
+                    <button
+                      type="button"
+                      onClick={toggleRadarAnimation}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                      aria-label={isPlaying ? 'Pause' : 'Play'}
+                    >
+                      {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                    </button>
                     <input
                       type="range"
                       min={0}
                       max={radarTimestamps.length - 1}
                       value={radarFrame}
                       onChange={e => setRadarFrame(Number(e.target.value))}
+                      className="w-40 accent-blue-500"
                     />
-                    <span className="text-xs font-mono">{new Date(radarTimestamps[radarFrame] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="bg-blue-700 text-white rounded-full px-3 py-1 text-xs font-mono">
+                      {new Date(radarTimestamps[radarFrame] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 )}
               </div>
