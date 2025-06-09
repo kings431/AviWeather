@@ -32,6 +32,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// Custom green icon for alternates
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
 function App() {
   const { 
     selectedStations, 
@@ -569,6 +580,11 @@ function App() {
                 )}
               </div>
               <div style={{ height: '400px', width: '100%' }}>
+                {/* Legend */}
+                <div className="absolute z-[1000] left-4 top-4 bg-white bg-opacity-90 rounded shadow px-3 py-2 text-xs flex flex-col gap-1">
+                  <div className="flex items-center gap-2"><span className="inline-block w-3 h-5 bg-blue-600 rounded-sm mr-1" style={{ background: 'url("' + markerIcon + '") center/contain no-repeat' }}></span> Route Airport</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-3 h-5 bg-green-600 rounded-sm mr-1" style={{ background: 'url(https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png) center/contain no-repeat' }}></span> Alternate</div>
+                </div>
                 <MapContainer center={routeCoords[0] || [49.91, -97.24]} zoom={5} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                   <LayersControl position="topright">
                     <LayersControl.BaseLayer checked name="OpenStreetMap">
@@ -603,6 +619,7 @@ function App() {
                       </LayersControl.Overlay>
                     )}
                   </LayersControl>
+                  {/* Route markers (default icon) */}
                   {routeCoords.map((pos, idx) => (
                     <Marker key={idx} position={pos}>
                       <Popup>
@@ -611,6 +628,18 @@ function App() {
                       </Popup>
                     </Marker>
                   ))}
+                  {/* Alternate markers (green icon) */}
+                  {alternateStations
+                    .filter(s => typeof s.latitude === 'number' && typeof s.longitude === 'number')
+                    .map((s, idx) => (
+                      <Marker key={s.icao || idx} position={[s.latitude, s.longitude]} icon={greenIcon}>
+                        <Popup>
+                          {s.icao}<br />
+                          {s.name}
+                          <div className="text-xs text-gray-500">Alternate</div>
+                        </Popup>
+                      </Marker>
+                    ))}
                   {routeCoords.length > 1 && <Polyline positions={routeCoords} color="blue" />}
                 </MapContainer>
               </div>
