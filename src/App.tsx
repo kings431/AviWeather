@@ -528,7 +528,18 @@ function App() {
         <Header />
         <FavoritesBar />
       </div>
-      <main className="flex items-center justify-center" style={{ height: 'calc(100vh - 154px)' }}>
+      <main
+        className={
+          selectedStations.length === 0
+            ? 'flex items-center justify-center'
+            : 'min-h-screen flex flex-col'
+        }
+        style={
+          selectedStations.length === 0
+            ? { height: 'calc(100vh - 154px)' }
+            : undefined
+        }
+      >
         <Routes>
           <RouterRoute path="/" element={
             <>
