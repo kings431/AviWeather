@@ -12,6 +12,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Plus, Minus, Search, Settings, ChevronDown, ChevronRight, Plane, Clock, Route as RouteIcon, MapPin } from 'lucide-react';
+import Header from './Header';
 
 // Fix Leaflet's default icon path issues with bundlers
 // @ts-ignore
@@ -199,7 +200,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             lon: aptLon
           };
         })
-        .sort((a, b) => a.distance - b.distance)
+        .sort((a: AlternateAirport, b: AlternateAirport) => a.distance - b.distance)
         .slice(0, 5); // Top 5 closest alternates
 
       setAlternateAirports(alternates);
@@ -304,43 +305,13 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 px-6 py-4 fixed top-0 left-0 right-0 z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-                <Plane className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold">AviWeather</h1>
-                <p className="text-sm text-slate-400">Aviation Weather for Pilots</p>
-              </div>
-            </div>
-            <div className="text-lg font-medium text-blue-400">Route Planner</div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search by ICAO code (e.g., KJFK)"
-                className="bg-slate-700 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
-              />
-            </div>
-            <button className="p-2 text-slate-400 hover:text-white">
-              <Settings className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex pt-20 h-screen">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <Header />
+      <main className="flex flex-1 w-full container mx-auto max-w-7xl px-4 pt-24 gap-4 items-stretch" style={{ minHeight: 'calc(100vh - 80px)' }}>
         {/* Left Sidebar - Route Planning */}
-        <div className="w-80 bg-slate-800 border-r border-slate-700 flex flex-col overflow-y-auto">
+        <div className="w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto rounded-lg shadow-md">
           {/* Route Section */}
-          <div className="p-6 border-b border-slate-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-800">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
               <RouteIcon className="w-5 h-5 mr-2" />
               Route
@@ -348,13 +319,13 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             
             {/* From */}
             <div className="mb-4">
-              <label className="block text-sm text-slate-400 mb-2">From</label>
+              <label className="block text-sm text-gray-500 mb-2">From</label>
               <input
                 type="text"
                 value={waypoints[0]?.icao || ''}
                 onChange={(e) => handleWaypointChange(0, e.target.value)}
                 maxLength={4}
-                className={`w-full bg-slate-700 border ${validation[0] === false ? 'border-red-500' : 'border-slate-600'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`w-full bg-gray-100 border ${validation[0] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
               />
             </div>
@@ -363,7 +334,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4 flex justify-center">
               <button
                 onClick={addWaypoint}
-                className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 text-sm"
+                className="flex items-center space-x-2 text-blue-500 hover:text-blue-400 text-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Waypoint</span>
@@ -378,12 +349,12 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                   value={wp.icao}
                   onChange={(e) => handleWaypointChange(idx + 1, e.target.value)}
                   maxLength={4}
-                  className={`flex-1 bg-slate-700 border ${validation[idx + 1] === false ? 'border-red-500' : 'border-slate-600'} rounded-lg px-3 py-2 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`flex-1 bg-gray-100 border ${validation[idx + 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   placeholder="ICAO"
                 />
                 <button
                   onClick={() => removeWaypoint(idx + 1)}
-                  className="text-red-400 hover:text-red-300"
+                  className="text-red-500 hover:text-red-400"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
@@ -392,13 +363,13 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
             {/* To */}
             <div className="mb-6">
-              <label className="block text-sm text-slate-400 mb-2">To</label>
+              <label className="block text-sm text-gray-500 mb-2">To</label>
               <input
                 type="text"
                 value={waypoints[waypoints.length - 1]?.icao || ''}
                 onChange={(e) => handleWaypointChange(waypoints.length - 1, e.target.value)}
                 maxLength={4}
-                className={`w-full bg-slate-700 border ${validation[waypoints.length - 1] === false ? 'border-red-500' : 'border-slate-600'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`w-full bg-gray-100 border ${validation[waypoints.length - 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
               />
             </div>
@@ -407,7 +378,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <button
               onClick={findRoute}
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-medium py-3 rounded-lg transition-colors"
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 text-white font-medium py-3 rounded-lg transition-colors"
             >
               {isLoading ? 'Finding Route...' : 'Find Route'}
             </button>
@@ -416,11 +387,11 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             {routeData && (
               <div className="mt-6 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Distance:</span>
+                  <span className="text-gray-500">Distance:</span>
                   <span className="font-mono">{routeData.distance} nm</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">ETE:</span>
+                  <span className="text-gray-500">ETE:</span>
                   <span className="font-mono flex items-center">
                     <Clock className="w-4 h-4 mr-1" />
                     {Math.floor(routeData.ete / 60)}h {routeData.ete % 60}m
@@ -438,19 +409,19 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
           {/* Route Details */}
           {routeData && (
-            <div className="p-6 border-b border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-400 mb-3">Route Details</h3>
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">Route Details</h3>
               <div className="space-y-2">
                 {waypoints.map((wp, idx) => (
                   <div key={idx} className="flex justify-between items-center py-2">
                     <div>
                       <div className="font-mono text-sm">{wp.icao}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-gray-500">
                         {idx === 0 ? 'From' : idx === waypoints.length - 1 ? 'To' : 'Via'}
                       </div>
                     </div>
                     {wp.lat && wp.lon && (
-                      <div className="text-xs text-slate-400 font-mono">
+                      <div className="text-xs text-gray-500 font-mono">
                         {wp.lat.toFixed(2)}, {wp.lon.toFixed(2)}
                       </div>
                     )}
@@ -463,21 +434,21 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
           {/* Alternates Section */}
           {alternateAirports.length > 0 && (
             <div className="p-6">
-              <h3 className="text-sm font-semibold text-slate-400 mb-3 flex items-center">
+              <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center">
                 <MapPin className="w-4 h-4 mr-2" />
                 Alternate Airports
               </h3>
               <div className="space-y-2">
                 {alternateAirports.map((alt) => (
-                  <div key={alt.icao} className="bg-slate-700 rounded-lg p-3">
+                  <div key={alt.icao} className="bg-gray-100 rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-mono text-sm font-semibold">{alt.icao}</div>
-                        <div className="text-xs text-slate-300 truncate">{alt.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{alt.name}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-slate-400">{alt.distance} nm</div>
-                        <div className="text-xs text-slate-400">{alt.bearing}°</div>
+                        <div className="text-xs text-gray-500">{alt.distance} nm</div>
+                        <div className="text-xs text-gray-500">{alt.bearing}°</div>
                       </div>
                     </div>
                   </div>
@@ -489,9 +460,9 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                     type="checkbox"
                     checked={showAlternates}
                     onChange={(e) => setShowAlternates(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-200 bg-gray-100 text-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-slate-300">Show on map</span>
+                  <span className="text-sm text-gray-500">Show on map</span>
                 </label>
               </div>
             </div>
@@ -499,84 +470,88 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
         </div>
 
         {/* Center - Map */}
-        <div className="flex-1 relative">
-          <MapContainer 
-            center={position} 
-            zoom={6} 
-            scrollWheelZoom={true}
-            className="w-full h-full"
-            style={{ background: '#1e293b' }}
-            attributionControl={false}
-          >
-            <LayersControl position="topright">
-              <LayersControl.BaseLayer checked name="Dark">
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  attribution=""
-                />
-              </LayersControl.BaseLayer>
-              <LayersControl.BaseLayer name="Satellite">
-                <TileLayer
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  attribution=""
-                />
-              </LayersControl.BaseLayer>
-              <LayersControl.Overlay name="Weather Radar">
-                <TileLayer
-                  url="https://tilecache.rainviewer.com/v2/radar/{z}/{x}/{y}/256/6/1_1.png"
-                  attribution=""
-                  opacity={0.6}
-                />
-              </LayersControl.Overlay>
-            </LayersControl>
-            
-            {positions.length > 1 && (
-              <Polyline 
-                positions={positions} 
-                color="#3b82f6" 
-                weight={3}
-                opacity={0.8}
-              />
-            )}
-            
-            {waypoints.map((wp, idx) =>
-              wp.lat && wp.lon ? (
-                <Marker key={wp.icao + idx} position={[wp.lat, wp.lon]}>
-                  <Popup>
-                    <div className="text-slate-900">
-                      <div className="font-mono font-semibold">{wp.icao}</div>
-                      <div className="text-sm">
-                        {idx === 0 ? 'Departure' : idx === waypoints.length - 1 ? 'Destination' : 'Waypoint'}
-                      </div>
-                      <div className="text-xs mt-1">
-                        {wp.lat.toFixed(4)}, {wp.lon.toFixed(4)}
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ) : null
-            )}
+        <div className="flex-1 flex items-stretch justify-center">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center">
+              <MapContainer 
+                center={position} 
+                zoom={6} 
+                scrollWheelZoom={true}
+                className="w-full h-full min-h-[400px]"
+                style={{ height: '100%', minHeight: '400px' }}
+                attributionControl={false}
+              >
+                <LayersControl position="topright">
+                  <LayersControl.BaseLayer checked name="Dark">
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      attribution=""
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.BaseLayer name="Satellite">
+                    <TileLayer
+                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      attribution=""
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.Overlay name="Weather Radar">
+                    <TileLayer
+                      url="https://tilecache.rainviewer.com/v2/radar/{z}/{x}/{y}/256/6/1_1.png"
+                      attribution=""
+                      opacity={0.6}
+                    />
+                  </LayersControl.Overlay>
+                </LayersControl>
+                
+                {positions.length > 1 && (
+                  <Polyline 
+                    positions={positions} 
+                    color="#3b82f6" 
+                    weight={3}
+                    opacity={0.8}
+                  />
+                )}
+                
+                {waypoints.map((wp, idx) =>
+                  wp.lat && wp.lon ? (
+                    <Marker key={wp.icao + idx} position={[wp.lat, wp.lon]}>
+                      <Popup>
+                        <div className="text-slate-900">
+                          <div className="font-mono font-semibold">{wp.icao}</div>
+                          <div className="text-sm">
+                            {idx === 0 ? 'Departure' : idx === waypoints.length - 1 ? 'Destination' : 'Waypoint'}
+                          </div>
+                          <div className="text-xs mt-1">
+                            {wp.lat.toFixed(4)}, {wp.lon.toFixed(4)}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ) : null
+                )}
 
-            {/* Show alternate airports if enabled */}
-            {showAlternates && alternateAirports.map((alt) => (
-              <Marker key={alt.icao} position={[alt.lat, alt.lon]} icon={greenIcon}>
-                <Popup>
-                  <div className="text-slate-900">
-                    <div className="font-mono font-semibold">{alt.icao}</div>
-                    <div className="text-sm">Alternate</div>
-                    <div className="text-xs">{alt.name}</div>
-                    <div className="text-xs mt-1">
-                      {alt.distance} nm, {alt.bearing}°
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+                {/* Show alternate airports if enabled */}
+                {showAlternates && alternateAirports.map((alt) => (
+                  <Marker key={alt.icao} position={[alt.lat, alt.lon]} icon={greenIcon}>
+                    <Popup>
+                      <div className="text-slate-900">
+                        <div className="font-mono font-semibold">{alt.icao}</div>
+                        <div className="text-sm">Alternate</div>
+                        <div className="text-xs">{alt.name}</div>
+                        <div className="text-xs mt-1">
+                          {alt.distance} nm, {alt.bearing}°
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </div>
+          </div>
         </div>
 
         {/* Right Sidebar - Weather */}
-        <div className="w-96 bg-slate-800 border-l border-slate-700 overflow-y-auto">
+        <div className="w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 overflow-y-auto rounded-lg shadow-md flex flex-col">
           <div className="p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center justify-between">
               Weather
@@ -587,7 +562,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4">
               <button
                 onClick={() => toggleSection('metar')}
-                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                className="w-full flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <span className="font-medium">METAR</span>
                 {expandedSections.metar ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -596,9 +571,9 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
               {expandedSections.metar && (
                 <div className="mt-2 space-y-3">
                   {waypoints.filter(wp => wp.icao).map((wp) => (
-                    <div key={wp.icao} className="bg-slate-700 rounded-lg p-3">
+                    <div key={wp.icao} className="bg-gray-100 rounded-lg p-3">
                       <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
-                      <div className="text-xs text-slate-300 font-mono leading-relaxed">
+                      <div className="text-xs text-gray-500 font-mono leading-relaxed">
                         {metarData[wp.icao]?.latestMetar?.text || 'Loading...'}
                       </div>
                     </div>
@@ -611,7 +586,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4">
               <button
                 onClick={() => toggleSection('taf')}
-                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                className="w-full flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <span className="font-medium">TAF</span>
                 {expandedSections.taf ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -620,9 +595,9 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
               {expandedSections.taf && (
                 <div className="mt-2 space-y-3">
                   {waypoints.filter(wp => wp.icao).map((wp) => (
-                    <div key={wp.icao} className="bg-slate-700 rounded-lg p-3">
+                    <div key={wp.icao} className="bg-gray-100 rounded-lg p-3">
                       <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
-                      <div className="text-xs text-slate-300 font-mono leading-relaxed">
+                      <div className="text-xs text-gray-500 font-mono leading-relaxed">
                         {tafData[wp.icao]?.raw || 'No TAF available'}
                       </div>
                     </div>
@@ -635,7 +610,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4">
               <button
                 onClick={() => toggleSection('gfa')}
-                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                className="w-full flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <span className="font-medium">GFA</span>
                 <ChevronRight className="w-4 h-4" />
@@ -646,7 +621,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4">
               <button
                 onClick={() => toggleSection('sigmet')}
-                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                className="w-full flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <span className="font-medium">SIGMET</span>
                 <ChevronRight className="w-4 h-4" />
@@ -657,7 +632,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4">
               <button
                 onClick={() => toggleSection('airmet')}
-                className="w-full flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                className="w-full flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <span className="font-medium">AIRMET</span>
                 <ChevronRight className="w-4 h-4" />
@@ -665,7 +640,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
