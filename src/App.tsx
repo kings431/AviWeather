@@ -14,9 +14,10 @@ import { Plane } from 'lucide-react';
 import WeatherCameras from './components/WeatherCameras';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Routes, Route, useParams, Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, LayersControl, GeoJSON } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import type { FeatureCollection } from 'geojson';
 
 function App() {
   const { 
@@ -405,6 +406,32 @@ function App() {
     const [stations, setStations] = React.useState<any[]>([]);
     const [alternateStations, setAlternateStations] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
+    const [showRadar, setShowRadar] = React.useState(true);
+    const [radarFrame, setRadarFrame] = React.useState(0);
+    const [radarTimestamps, setRadarTimestamps] = React.useState<number[]>([]);
+    const [sigmetData, setSigmetData] = React.useState<any>(null);
+    const [airmetData, setAirmetData] = React.useState<any>(null);
+
+    // Fetch RainViewer radar timestamps on mount
+    React.useEffect(() => {
+      fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.radar && data.radar.past) {
+            setRadarTimestamps(data.radar.past.map((f: any) => f.time));
+          }
+        });
+    }, []);
+
+    // Fetch SIGMET and AIRMET GeoJSON overlays (replace with your real endpoint if available)
+    React.useEffect(() => {
+      fetch('/api/weather-reports?type=sigmet&icao=ALL')
+        .then(res => res.json())
+        .then(data => setSigmetData(data));
+      fetch('/api/weather-reports?type=airmet&icao=ALL')
+        .then(res => res.json())
+        .then(data => setAirmetData(data));
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -482,12 +509,60 @@ function App() {
           <div className="mb-6">
             <div className="card mb-4">
               <h2 className="text-lg font-semibold mb-2">Route Map</h2>
+              <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                <label className="inline-flex items-center">
+                  <input type="checkbox" checked={showRadar} onChange={e => setShowRadar(e.target.checked)} className="mr-2" />
+                  Show Radar Overlay
+                </label>
+                {showRadar && radarTimestamps.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">Radar Time:</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={radarTimestamps.length - 1}
+                      value={radarFrame}
+                      onChange={e => setRadarFrame(Number(e.target.value))}
+                    />
+                    <span className="text-xs font-mono">{new Date(radarTimestamps[radarFrame] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
+              </div>
               <div style={{ height: '400px', width: '100%' }}>
                 <MapContainer center={routeCoords[0] || [49.91, -97.24]} zoom={5} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution="&copy; OpenStreetMap contributors"
-                  />
+                  <LayersControl position="topright">
+                    <LayersControl.BaseLayer checked name="OpenStreetMap">
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution="&copy; OpenStreetMap contributors"
+                      />
+                    </LayersControl.BaseLayer>
+                    <LayersControl.BaseLayer name="CartoDB Dark Matter">
+                      <TileLayer
+                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                        attribution="&copy; CartoDB"
+                      />
+                    </LayersControl.BaseLayer>
+                    {showRadar && radarTimestamps.length > 0 && (
+                      <LayersControl.Overlay checked name="Radar (RainViewer)">
+                        <TileLayer
+                          url={`https://tilecache.rainviewer.com/v2/radar/${radarTimestamps[radarFrame]}/256/{z}/{x}/{y}/2/1_1.png`}
+                          attribution="Radar &copy; RainViewer"
+                          opacity={0.6}
+                        />
+                      </LayersControl.Overlay>
+                    )}
+                    {sigmetData && Array.isArray(sigmetData) && sigmetData.length > 0 && (
+                      <LayersControl.Overlay name="SIGMETs">
+                        <GeoJSON data={{ type: 'FeatureCollection', features: sigmetData } as FeatureCollection} style={{ color: 'red', weight: 2, fillOpacity: 0.2 }} />
+                      </LayersControl.Overlay>
+                    )}
+                    {airmetData && Array.isArray(airmetData) && airmetData.length > 0 && (
+                      <LayersControl.Overlay name="AIRMETs">
+                        <GeoJSON data={{ type: 'FeatureCollection', features: airmetData } as FeatureCollection} style={{ color: 'orange', weight: 2, fillOpacity: 0.2 }} />
+                      </LayersControl.Overlay>
+                    )}
+                  </LayersControl>
                   {routeCoords.map((pos, idx) => (
                     <Marker key={idx} position={pos}>
                       <Popup>
