@@ -244,8 +244,8 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false }) => {
         {formatTaf(data.raw)}
       </div>
 
-      {/* Show simplified TAF only when hideRaw is false */}
-      {!hideRaw && (
+      {/* Show simplified TAF only when hideRaw is false (toggle OFF) */}
+      {hideRaw === false && (
         <div className="space-y-4">
           {data.periods.map((period, index) => (
             <ForecastPeriod key={index} period={period} index={index} tafIssueTime={data.issue_time} />
