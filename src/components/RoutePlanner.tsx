@@ -159,15 +159,20 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
       const route = await optimizer.optimizeRoute(dep, arr, optimizationCriteria);
       console.log('Route calculated', route);
       const estimatedTime = cruiseSpeed > 0 ? Math.round(route.distance / cruiseSpeed * 60) : 0;
-      setSuggestedRoute({ ...route, estimatedTime });
-      
+      const newRoute = { ...route, estimatedTime };
+      // Only update if different
+      setSuggestedRoute(prev => {
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(newRoute)) {
+          return newRoute;
+        }
+        return prev;
+      });
       // Fetch weather data for the route
       const weather = await fetchWeatherData(dep);
       console.log('Weather fetched', weather);
       setWeatherData(weather);
-      
-      onRouteSelect({ ...route, estimatedTime });
-      setCurrentRoute({ ...route, estimatedTime });
+      onRouteSelect(newRoute);
+      setCurrentRoute(newRoute);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to calculate route';
       console.error('Route calculation error', err);
@@ -231,6 +236,13 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
     };
     fetchCoords();
   }, [alternates]);
+
+  useEffect(() => {
+    console.log('[RoutePlanner] suggestedRoute:', suggestedRoute);
+  }, [suggestedRoute]);
+  useEffect(() => {
+    console.log('[RoutePlanner] currentRoute:', useRouteStore.getState().currentRoute);
+  }, [useRouteStore.getState().currentRoute]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
@@ -403,11 +415,11 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
           {/* Weather for each airport in the route */}
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-4">Route Weather Details</h2>
-            {suggestedRoute.waypoints.map(icao => (
-              <RouteWeatherDisplay key={icao} icao={icao} weatherToggles={weatherToggles} />
+            {suggestedRoute.waypoints.map((icao, idx) => (
+              <RouteWeatherDisplay key={icao + '-' + idx} icao={icao} weatherToggles={weatherToggles} />
             ))}
-            {alternates.map(icao => (
-              <RouteWeatherDisplay key={icao} icao={icao} weatherToggles={weatherToggles} />
+            {alternates.map((icao, idx) => (
+              <RouteWeatherDisplay key={icao + '-alt-' + idx} icao={icao} weatherToggles={weatherToggles} />
             ))}
           </div>
         </div>
