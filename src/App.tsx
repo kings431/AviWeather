@@ -26,7 +26,7 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { FlightCategoryBadge } from './components/MetarDisplay';
 import MetarDisplay from './components/MetarDisplay';
 import TafDisplay from './components/TafDisplay';
-import { RoutePlanner } from './components/RoutePlanner';
+import RoutePlanner from './components/RoutePlanner';
 import type { Route } from './types';
 import StationInfo from './components/StationInfo';
 import WeatherReports from './components/WeatherReports';
@@ -475,7 +475,7 @@ function App() {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Route Planner</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           <div>
             <RoutePlanner onRouteSelect={handleRouteSelect} />
           </div>

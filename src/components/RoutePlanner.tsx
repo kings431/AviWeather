@@ -8,9 +8,6 @@ import ErrorMessage from './ErrorMessage';
 import LoadingSpinner from './LoadingSpinner';
 import AirportAutocomplete from './AirportAutocomplete';
 import RouteMap from '../routeWeather/RouteMap';
-import RouteWeatherToggles, { WeatherToggleType } from '../routeWeather/RouteWeatherToggles';
-import RouteWeatherDisplay from '../routeWeather/RouteWeatherDisplay';
-import dynamic from 'next/dynamic';
 import RouteInputPanel from './RouteInputPanel';
 import RouteSummaryPanel from './RouteSummaryPanel';
 import RouteMapPanel from './RouteMapPanel';
@@ -78,7 +75,7 @@ async function fetchWeatherCam(icao: string) {
   return null;
 }
 
-export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
+const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   console.log('RoutePlanner render');
   const [waypoints, setWaypoints] = useState<Waypoint[]>([
     { icao: '' }, // Departure
@@ -105,7 +102,7 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
     preferAirways: true,
     maxAltitude: 18000
   });
-  const [weatherToggles, setWeatherToggles] = useState<WeatherToggleType[]>(['METAR', 'TAF', 'NOTAM']);
+  const [weatherToggles, setWeatherToggles] = useState<string[]>(['METAR', 'TAF', 'NOTAM']);
 
   const { favorites } = useStore();
   const { setCurrentRoute, setAlternateAirports, setLoading, setError: setRouteError } = useRouteStore();
@@ -232,7 +229,7 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
       const estimatedTime = cruiseSpeed > 0 ? Math.round(route.distance / cruiseSpeed * 60) : 0;
       const newRoute = { ...route, estimatedTime };
       setRouteData({
-        waypoints: route.waypoints,
+        waypoints: wpsWithCoords,
         distance: route.distance,
         ete: estimatedTime
       });
@@ -244,9 +241,8 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
       const weather = await fetchWeatherData(wpsWithCoords[0].icao);
       console.log('Weather fetched', weather);
       setWeatherData(weather);
-      setMetarData(weather.METAR);
-      setTafData(weather.TAF);
-      setNotamData(weather.NOTAM);
+      setMetarData(weather.metar ? { [wpsWithCoords[0].icao]: weather.metar } : {});
+      setTafData(weather.taf ? { [wpsWithCoords[0].icao]: weather.taf } : {});
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to calculate route';
       console.error('Route calculation error', err);
@@ -305,50 +301,67 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   }, [useRouteStore.getState().currentRoute]);
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-full min-h-[80vh]">
+    <div className="flex flex-col md:flex-row w-full min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 gap-0 md:gap-8 pt-16">
       {/* Left: Input + Summary */}
-      <div className="w-full md:w-1/3 p-4 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 flex flex-col gap-4">
-        <RouteInputPanel
-          waypoints={waypoints}
-          onWaypointChange={handleWaypointChange}
-          onAddWaypoint={addWaypoint}
-          onRemoveWaypoint={removeWaypoint}
-          onFindRoute={findRoute}
-          onExportGPX={handleExportGPX}
-          onExportJSON={handleExportJSON}
-          onVoiceInput={handleVoiceInput}
-          onShareRoute={handleShareRoute}
-          validation={validation}
-        />
-        <RouteSummaryPanel
-          waypoints={waypoints}
-          routeData={routeData}
-          selectedMarker={selectedMarker}
-          metarData={metarData}
-          tafData={tafData}
-          notamData={notamData}
-          gfaLinks={gfaLinks.flat()}
-          sigmetData={sigmetData.flat()}
-          airmetData={airmetData.flat()}
-          pirepData={pirepData.flat()}
-          weatherCams={weatherCams}
-          onExportGPX={handleExportGPX}
-          onExportJSON={handleExportJSON}
-          onShareRoute={handleShareRoute}
-        />
-        {isLoading && <div className="text-blue-500">Loading route and weather...</div>}
-        {error && <div className="text-red-500">{error}</div>}
+      <div className="min-w-[340px] w-full md:w-[400px] max-w-[480px] flex-shrink-0 p-6 md:p-8 bg-white dark:bg-slate-900 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 min-h-[calc(100vh-4rem)]">
+        <div className="mb-8 w-full">
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight">Route Planner</h2>
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-6 w-full">
+            <RouteInputPanel
+              waypoints={waypoints}
+              onWaypointChange={handleWaypointChange}
+              onAddWaypoint={addWaypoint}
+              onRemoveWaypoint={removeWaypoint}
+              onFindRoute={findRoute}
+              onExportGPX={handleExportGPX}
+              onExportJSON={handleExportJSON}
+              onVoiceInput={handleVoiceInput}
+              onShareRoute={handleShareRoute}
+              validation={validation}
+            />
+          </div>
+        </div>
+        <div className="mb-8 w-full">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Route Summary</h3>
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl shadow-lg p-6 w-full">
+            <RouteSummaryPanel
+              waypoints={waypoints}
+              routeData={routeData}
+              selectedMarker={selectedMarker}
+              metarData={metarData}
+              tafData={tafData}
+              notamData={notamData}
+              gfaLinks={gfaLinks.flat()}
+              sigmetData={sigmetData.flat()}
+              airmetData={airmetData.flat()}
+              pirepData={pirepData.flat()}
+              weatherCams={weatherCams}
+              onExportGPX={handleExportGPX}
+              onExportJSON={handleExportJSON}
+              onShareRoute={handleShareRoute}
+            />
+            {isLoading && <div className="text-blue-500 dark:text-blue-400 mt-4">Loading route and weather...</div>}
+            {error && <div className="text-red-500 dark:text-red-400 mt-4">{error}</div>}
+          </div>
+        </div>
       </div>
       {/* Right: Map */}
-      <div className="w-full md:w-2/3 p-4">
-        <RouteMapPanel
-          waypoints={waypoints}
-          routeData={routeData}
-          selectedMarker={selectedMarker}
-          onMarkerClick={setSelectedMarker}
-          metarData={metarData}
-          tafData={tafData}
-        />
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
+        <div className="w-full h-[400px] md:h-[600px] max-w-[900px] bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center">
+          <RouteMapPanel
+            waypoints={waypoints}
+            routeData={routeData}
+            selectedMarker={selectedMarker}
+            onMarkerClick={setSelectedMarker}
+            metarData={metarData}
+            tafData={tafData}
+            sigmetData={sigmetData.flat()}
+            airmetData={airmetData.flat()}
+            pirepData={pirepData.flat()}
+            weatherCams={weatherCams}
+            gfaLinks={gfaLinks.flat()}
+          />
+        </div>
       </div>
     </div>
   );
