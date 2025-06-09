@@ -22,6 +22,9 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { FlightCategoryBadge } from './components/MetarDisplay';
+import MetarDisplay from './components/MetarDisplay';
+import TafDisplay from './components/TafDisplay';
 
 // Fix Leaflet's default icon path issues with bundlers
 // @ts-ignore
@@ -648,24 +651,43 @@ function App() {
               <h2 className="text-lg font-semibold mb-2">Route Weather & NOTAMs</h2>
               <ul>
                 {stations.map((s, idx) => (
-                  <li key={s.icao || idx} className="mb-4">
-                    <b>{s.icao}</b> {s.name && `- ${s.name}`}
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {s.weather?.metar?.raw ? (
-                        <div>METAR: {s.weather.metar.raw}</div>
-                      ) : (
-                        <div>No METAR available</div>
-                      )}
-                      {s.weather?.taf?.raw ? (
-                        <div>TAF: {s.weather.taf.raw}</div>
-                      ) : (
-                        <div>No TAF available</div>
-                      )}
-                      {s.weather?.notam ? (
-                        <div>NOTAMs: {Array.isArray(s.weather.notam) ? s.weather.notam.join('; ') : s.weather.notam}</div>
-                      ) : (
-                        <div>No NOTAMs available</div>
-                      )}
+                  <li key={s.icao || idx} className="mb-8">
+                    <div className="mb-2">
+                      <b>{s.icao}</b> {s.name && `- ${s.name}`}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* METAR */}
+                      <div className="col-span-1">
+                        {s.weather?.metar ? (
+                          <div className="card p-3 h-full flex flex-col">
+                            <h3 className="text-base font-semibold mb-1">METAR</h3>
+                            <div className="mb-2">
+                              <FlightCategoryBadge category={s.weather.metar.flight_category} />
+                            </div>
+                            <MetarDisplay data={s.weather.metar} icao={s.icao} hideRaw={false} hideBadge={true} />
+                          </div>
+                        ) : (
+                          <div className="text-gray-500">No METAR available</div>
+                        )}
+                      </div>
+                      {/* TAF */}
+                      <div className="col-span-1">
+                        {s.weather?.taf ? (
+                          <div className="card p-3 h-full flex flex-col">
+                            <h3 className="text-base font-semibold mb-1">TAF</h3>
+                            <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
+                          </div>
+                        ) : (
+                          <div className="text-gray-500">No TAF available</div>
+                        )}
+                      </div>
+                      {/* NOTAMs */}
+                      <div className="col-span-1">
+                        <div className="card p-3 h-full flex flex-col">
+                          <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
+                          <NotamDisplay icao={s.icao} />
+                        </div>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -676,24 +698,41 @@ function App() {
                 <h2 className="text-lg font-semibold mb-2">Alternate Airports Weather & NOTAMs</h2>
                 <ul>
                   {alternateStations.map((s, idx) => (
-                    <li key={s.icao || idx} className="mb-4">
-                      <b>{s.icao}</b> {s.name && `- ${s.name}`}
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {s.weather?.metar?.raw ? (
-                          <div>METAR: {s.weather.metar.raw}</div>
-                        ) : (
-                          <div>No METAR available</div>
-                        )}
-                        {s.weather?.taf?.raw ? (
-                          <div>TAF: {s.weather.taf.raw}</div>
-                        ) : (
-                          <div>No TAF available</div>
-                        )}
-                        {s.weather?.notam ? (
-                          <div>NOTAMs: {Array.isArray(s.weather.notam) ? s.weather.notam.join('; ') : s.weather.notam}</div>
-                        ) : (
-                          <div>No NOTAMs available</div>
-                        )}
+                    <li key={s.icao || idx} className="mb-8">
+                      <div className="mb-2">
+                        <b>{s.icao}</b> {s.name && `- ${s.name}`}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* METAR */}
+                        <div className="col-span-1">
+                          {s.weather?.metar ? (
+                            <div className="card p-3 h-full flex flex-col">
+                              <h3 className="text-base font-semibold mb-1">METAR</h3>
+                              <FlightCategoryBadge category={s.weather.metar.flight_category} />
+                              <MetarDisplay data={s.weather.metar} icao={s.icao} hideRaw={false} hideBadge={true} />
+                            </div>
+                          ) : (
+                            <div className="text-gray-500">No METAR available</div>
+                          )}
+                        </div>
+                        {/* TAF */}
+                        <div className="col-span-1">
+                          {s.weather?.taf ? (
+                            <div className="card p-3 h-full flex flex-col">
+                              <h3 className="text-base font-semibold mb-1">TAF</h3>
+                              <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
+                            </div>
+                          ) : (
+                            <div className="text-gray-500">No TAF available</div>
+                          )}
+                        </div>
+                        {/* NOTAMs */}
+                        <div className="col-span-1">
+                          <div className="card p-3 h-full flex flex-col">
+                            <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
+                            <NotamDisplay icao={s.icao} />
+                          </div>
+                        </div>
                       </div>
                     </li>
                   ))}
