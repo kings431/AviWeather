@@ -212,6 +212,10 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     }));
   }, []);
 
+  // Add state for user and calculated alternates
+  const [userAlternates, setUserAlternates] = useState<AlternateAirport[]>([]);
+  const [calculatedAlternates, setCalculatedAlternates] = useState<AlternateAirport[]>([]);
+
   // Batching state updates in findRoute
   const findRoute = useCallback(async () => {
     setIsLoading(true);
@@ -274,6 +278,44 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       // setWeatherData(weather);
       // setMetarData(weather.metar ? { [wpsWithCoords[0].icao]: weather.metar } : {});
       // setTafData(weather.taf ? { [wpsWithCoords[0].icao]: weather.taf } : {});
+
+      // Parse user-entered alternates
+      const userAlternateICAOs = alternateInputs
+        .split(',')
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+
+      // Fetch lat/lon for user alternates
+      const userAltsWithCoords = await Promise.all(
+        userAlternateICAOs.map(async icao => {
+          const coords = await fetchWaypointLatLon(icao);
+          return coords ? { icao, ...coords } : null;
+        })
+      );
+      const validUserAlts = userAltsWithCoords.filter(Boolean) as { icao: string, lat: number, lon: number }[];
+      setUserAlternates(validUserAlts.map(a => ({ icao: a.icao, name: a.icao, distance: 0, bearing: 0, lat: a.lat, lon: a.lon })));
+
+      // Fetch weather for user alternates
+      await Promise.all(validUserAlts.map(async (alt) => {
+        const weather = await fetchWeatherData(alt.icao);
+        metar[alt.icao] = weather.metar;
+        taf[alt.icao] = weather.taf;
+      }));
+
+      // Find calculated alternates for the destination
+      const destination = wpsWithCoords[wpsWithCoords.length - 1];
+      let calcAlts: AlternateAirport[] = [];
+      if (destination.lat && destination.lon) {
+        const found = await findAlternates(destination.icao, destination.lat, destination.lon);
+        calcAlts = found;
+        setCalculatedAlternates(calcAlts);
+        // Fetch weather for calculated alternates
+        await Promise.all(calcAlts.map(async (alt) => {
+          const weather = await fetchWeatherData(alt.icao);
+          metar[alt.icao] = weather.metar;
+          taf[alt.icao] = weather.taf;
+        }));
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to calculate route';
       setError(errorMessage);
@@ -284,13 +326,11 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   const findAlternates = async (destinationIcao: string, destLat: number, destLon: number) => {
     try {
       const nearbyAirports = await fetchNearestAirports(destLat, destLon, destinationIcao);
-      
       const alternates: AlternateAirport[] = nearbyAirports
         .filter((airport: any) => {
           const aptLat = airport.geometry?.coordinates?.[1];
           const aptLon = airport.geometry?.coordinates?.[0];
           if (typeof aptLat !== 'number' || typeof aptLon !== 'number') return false;
-          
           const distance = haversine(destLat, destLon, aptLat, aptLon);
           return distance <= 100 && airport.icao && airport.icao !== destinationIcao; // Within 100nm
         })
@@ -299,7 +339,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
           const aptLon = airport.geometry.coordinates[0];
           const distance = haversine(destLat, destLon, aptLat, aptLon);
           const brng = bearing(destLat, destLon, aptLat, aptLon);
-          
           return {
             icao: airport.icao,
             name: airport.name || `${airport.icao} Airport`,
@@ -311,11 +350,12 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
         })
         .sort((a: AlternateAirport, b: AlternateAirport) => a.distance - b.distance)
         .slice(0, 5); // Top 5 closest alternates
-
       setAlternateAirports(alternates);
+      return alternates;
     } catch (error) {
       console.error('Error finding alternates:', error);
       setAlternateAirports([]);
+      return [];
     }
   };
 
@@ -654,7 +694,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                     <div key={wp.icao} className="bg-gray-100 rounded-lg p-3">
                       <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
                       <div className="text-xs text-gray-500 font-mono leading-relaxed">
-                        {tafData[wp.icao]?.raw || 'No TAF available'}
+                        {tafData[wp.icao]?.raw || tafData[wp.icao]?.text || 'No TAF available'}
                       </div>
                     </div>
                   ))}
