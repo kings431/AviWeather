@@ -106,33 +106,17 @@ function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number
 const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   console.log('RoutePlanner render');
 
-  const {
-    routeWaypoints,
-    setRouteWaypoints,
-    routeData,
-    setRouteData,
-    metarData,
-    setMetarData,
-    tafData,
-    setTafData,
-  } = useStore();
-  const [validation, setValidation] = useState<boolean[]>([true, true]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [suggestedRoute, setSuggestedRoute] = useState<Route | null>(null);
-  const [weatherData, setWeatherData] = useState<any>(null);
-  const [alternateAirports, setAlternateAirports] = useState<AlternateAirport[]>([]);
-  const [showAlternates, setShowAlternates] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    metar: true,
-    taf: false,
-    gfa: false,
-    sigmet: false,
-    airmet: false,
-    alternates: false
-  });
+  // Use Zustand selectors to only subscribe to the state you need
+  const routeWaypoints = useStore(state => state.routeWaypoints);
+  const setRouteWaypoints = useStore(state => state.setRouteWaypoints);
+  const routeData = useStore(state => state.routeData);
+  const setRouteData = useStore(state => state.setRouteData);
+  const metarData = useStore(state => state.metarData);
+  const setMetarData = useStore(state => state.setMetarData);
+  const tafData = useStore(state => state.tafData);
+  const setTafData = useStore(state => state.setTafData);
+  const favorites = useStore(state => state.favorites);
 
-  const { favorites } = useStore();
   const { setCurrentRoute, setError: setRouteError } = useRouteStore();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const initialValues = useRef<string[]>([]);
@@ -150,24 +134,40 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   const [selectedAircraft, setSelectedAircraft] = useState(aircraftPresets[0].label);
   const [cruiseSpeed, setCruiseSpeed] = useState<number>(aircraftPresets[0].speed);
 
-  // Add local state for input values
-  const [localInputs, setLocalInputs] = useState<string[]>(() => {
-    const initial = routeWaypoints.map(wp => wp.icao);
-    initialValues.current = initial;
-    isInitialized.current = true;
-    return initial;
-  });
+  // Local state for ICAO input fields
+  const [localInputs, setLocalInputs] = useState(() => routeWaypoints.map(wp => wp.icao));
 
-  // Track active input focus
-  const [focusedInput, setFocusedInput] = useState<number | null>(null);
+  // Local state for alternate airport ICAOs
+  const [alternateInputs, setAlternateInputs] = useState('');
 
-  // Only update localInputs when routeWaypoints length changes
+  // Sync localInputs when number of waypoints changes
   useEffect(() => {
-    if (isInitialized.current && routeWaypoints.length !== localInputs.length) {
-      console.log('Updating localInputs due to length change:', routeWaypoints.map(wp => wp.icao));
-      setLocalInputs(routeWaypoints.map(wp => wp.icao));
-    }
+    setLocalInputs(routeWaypoints.map(wp => wp.icao));
   }, [routeWaypoints.length]);
+
+  // On input change, update only local state
+  const handleInputChange = (idx: number, value: string) => {
+    setLocalInputs(inputs => inputs.map((v, i) => i === idx ? value.toUpperCase() : v));
+  };
+
+  // On blur, update global state
+  const handleInputBlur = (idx: number) => {
+    const newIcao = localInputs[idx].toUpperCase();
+    setRouteWaypoints(wps => wps.map((wp, i) => i === idx ? { ...wp, icao: newIcao } : wp));
+    setValidation(v => v.map((valid, i) => i === idx ? /^[A-Z0-9]{4}$/.test(newIcao) : valid));
+  };
+
+  // Handler for alternate input change
+  const handleAlternateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAlternateInputs(e.target.value.toUpperCase());
+  };
+
+  // Handler for alternate input blur (could be used to validate or parse)
+  const handleAlternateInputBlur = () => {
+    // Optionally, parse and validate here
+    // const alternates = alternateInputs.split(',').map(s => s.trim()).filter(Boolean);
+    // setAlternateAirports(alternates); // If you want to store as array
+  };
 
   // Handle aircraft speed changes
   useEffect(() => {
@@ -182,34 +182,11 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   }, [selectedAircraft]);
 
   const handleWaypointChange = useCallback((idx: number, value: string) => {
-    console.log('handleWaypointChange called:', { idx, value, focusedInput });
-    
-    // Update local state immediately
-    setLocalInputs(prev => {
-      const newInputs = prev.map((v, i) => i === idx ? value.toUpperCase() : v);
-      console.log('Updating localInputs:', newInputs);
-      return newInputs;
-    });
-    
-    // Update global state
+    setLocalInputs(prev => prev.map((v, i) => i === idx ? value.toUpperCase() : v));
     const newIcao = value.toUpperCase();
-    setRouteWaypoints((wps: Waypoint[]) => {
-      const newWaypoints = wps.map((wp, i) => i === idx ? { ...wp, icao: newIcao } : wp);
-      console.log('Updating routeWaypoints:', newWaypoints);
-      return newWaypoints;
-    });
+    setRouteWaypoints((wps: Waypoint[]) => wps.map((wp, i) => i === idx ? { ...wp, icao: newIcao } : wp));
     setValidation(v => v.map((valid, i) => i === idx ? /^[A-Z0-9]{4}$/.test(newIcao) : valid));
-  }, [setRouteWaypoints, focusedInput]);
-
-  const handleInputFocus = useCallback((idx: number) => {
-    console.log('Input focused:', idx);
-    setFocusedInput(idx);
-  }, []);
-
-  const handleInputBlur = useCallback(() => {
-    console.log('Input blurred');
-    setFocusedInput(null);
-  }, []);
+  }, [setRouteWaypoints]);
 
   // Memoize the add waypoint handler
   const addWaypoint = useCallback(() => {
@@ -235,11 +212,10 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     }));
   }, []);
 
-  // Memoize the find route handler
+  // Batching state updates in findRoute
   const findRoute = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
     // Validate ICAOs
     const valid = routeWaypoints.map(wp => /^[A-Z0-9]{4}$/.test(wp.icao));
     setValidation(valid);
@@ -247,7 +223,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       setIsLoading(false); 
       return; 
     }
-
     // Fetch lat/lon for each waypoint
     const wpsWithCoords = await Promise.all(
       routeWaypoints.map(async wp => {
@@ -255,16 +230,13 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
         return coords ? { ...wp, ...coords } : { ...wp };
       })
     );
-
     if (wpsWithCoords.some(wp => typeof wp.lat !== 'number' || typeof wp.lon !== 'number')) {
       setError('One or more ICAOs not found.');
       setIsLoading(false);
       return;
     }
-
+    // Batch all state updates here
     setRouteWaypoints(wpsWithCoords);
-
-    // Calculate distance (great-circle) and ETE
     let distance = 0;
     for (let i = 1; i < wpsWithCoords.length; i++) {
       if (typeof wpsWithCoords[i - 1].lat === 'number' && typeof wpsWithCoords[i - 1].lon === 'number' && typeof wpsWithCoords[i].lat === 'number' && typeof wpsWithCoords[i].lon === 'number') {
@@ -273,21 +245,13 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     }
     const ete = Math.round(distance / cruiseSpeed * 60);
     setRouteData({ waypoints: wpsWithCoords, distance: Math.round(distance), ete });
-
-    // Find alternates for the destination
-    const destination = wpsWithCoords[wpsWithCoords.length - 1];
-    if (destination.lat && destination.lon) {
-      await findAlternates(destination.icao, destination.lat, destination.lon);
-    }
-
     // Fetch weather data for each waypoint
     const metar: Record<string, any> = {};
     const taf: Record<string, any> = {};
-    
     await Promise.all(wpsWithCoords.map(async (wp) => {
       metar[wp.icao] = await fetchMetar(wp.icao);
     }));
-
+    // Batch metar/taf updates
     setMetarData(metar);
     setTafData(taf);
     setIsLoading(false);
@@ -306,10 +270,10 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       onRouteSelect(newRoute);
       setCurrentRoute(newRoute);
 
-      const weather = await fetchWeatherData(wpsWithCoords[0].icao);
-      setWeatherData(weather);
-      setMetarData(weather.metar ? { [wpsWithCoords[0].icao]: weather.metar } : {});
-      setTafData(weather.taf ? { [wpsWithCoords[0].icao]: weather.taf } : {});
+      // Remove or comment out setWeatherData if present
+      // setWeatherData(weather);
+      // setMetarData(weather.metar ? { [wpsWithCoords[0].icao]: weather.metar } : {});
+      // setTafData(weather.taf ? { [wpsWithCoords[0].icao]: weather.taf } : {});
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to calculate route';
       setError(errorMessage);
@@ -361,6 +325,21 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
   const positions = routeWaypoints.filter(wp => wp.lat && wp.lon).map(wp => [wp.lat!, wp.lon!] as [number, number]);
 
+  const [validation, setValidation] = useState<boolean[]>([true, true]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestedRoute, setSuggestedRoute] = useState<Route | null>(null);
+  const [expandedSections, setExpandedSections] = useState({
+    metar: true,
+    taf: false,
+    gfa: false,
+    sigmet: false,
+    airmet: false,
+    alternates: false
+  });
+  const [showAlternates, setShowAlternates] = useState(false);
+  const [alternateAirports, setAlternateAirports] = useState<AlternateAirport[]>([]);
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Header />
@@ -381,9 +360,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                 ref={el => inputRefs.current[0] = el}
                 type="text"
                 value={localInputs[0] || ''}
-                onChange={(e) => handleWaypointChange(0, e.target.value)}
-                onFocus={() => handleInputFocus(0)}
-                onBlur={handleInputBlur}
+                onChange={(e) => handleInputChange(0, e.target.value)}
+                onBlur={() => handleInputBlur(0)}
                 maxLength={4}
                 className={`w-full bg-gray-100 border ${validation[0] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
@@ -408,9 +386,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                   ref={el => inputRefs.current[idx + 1] = el}
                   type="text"
                   value={localInputs[idx + 1] || ''}
-                  onChange={(e) => handleWaypointChange(idx + 1, e.target.value)}
-                  onFocus={() => handleInputFocus(idx + 1)}
-                  onBlur={handleInputBlur}
+                  onChange={(e) => handleInputChange(idx + 1, e.target.value)}
+                  onBlur={() => handleInputBlur(idx + 1)}
                   maxLength={4}
                   className={`flex-1 bg-gray-100 border ${validation[idx + 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   placeholder="ICAO"
@@ -431,13 +408,26 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                 ref={el => inputRefs.current[routeWaypoints.length - 1] = el}
                 type="text"
                 value={localInputs[routeWaypoints.length - 1] || ''}
-                onChange={(e) => handleWaypointChange(routeWaypoints.length - 1, e.target.value)}
-                onFocus={() => handleInputFocus(routeWaypoints.length - 1)}
-                onBlur={handleInputBlur}
+                onChange={(e) => handleInputChange(routeWaypoints.length - 1, e.target.value)}
+                onBlur={() => handleInputBlur(routeWaypoints.length - 1)}
                 maxLength={4}
                 className={`w-full bg-gray-100 border ${validation[routeWaypoints.length - 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
               />
+            </div>
+
+            {/* Alternate Airports Input */}
+            <div className="mb-4">
+              <label className="block text-sm text-gray-500 mb-2">Alternate Airport(s)</label>
+              <input
+                type="text"
+                value={alternateInputs}
+                onChange={handleAlternateInputChange}
+                onBlur={handleAlternateInputBlur}
+                placeholder="ICAO, ICAO, ..."
+                className="w-full bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <span className="text-xs text-gray-400">Comma-separated ICAO codes</span>
             </div>
 
             {/* Find Route Button */}
