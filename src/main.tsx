@@ -20,7 +20,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <div className="flex flex-col bg-gradient-to-br ...">
+          <App />
+        </div>
       </BrowserRouter>
       <Analytics />
     </QueryClientProvider>

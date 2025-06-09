@@ -103,7 +103,7 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false
           </div>
 
           {/* Show simplified METAR only when hideRaw is false (toggle ON) */}
-          {hideRaw === false && (
+          {hideRaw === true && (
             <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Wind Information */}

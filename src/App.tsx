@@ -30,6 +30,8 @@ import { RoutePlanner } from './components/RoutePlanner';
 import type { Route } from './types';
 import StationInfo from './components/StationInfo';
 import WeatherReports from './components/WeatherReports';
+import ParticleBackground from './components/ParticleBackground';
+import SearchBar from './components/SearchBar';
 
 // Fix Leaflet's default icon path issues with bundlers
 // @ts-ignore
@@ -520,95 +522,111 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Header />
-      <FavoritesBar />
-      <Routes>
-        <RouterRoute path="/" element={
-          <div className="container mx-auto px-4 py-8">
-            {selectedStations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <h1 className="text-4xl font-extrabold mb-4 text-center">Welcome to AviWeather</h1>
-                <p className="mb-8 text-lg text-gray-700 dark:text-gray-300 text-center max-w-2xl">A modern aviation weather, NOTAM, and route planning app for pilots. Search for an airport above to get started, or try a quick start below.</p>
-                <div className="w-full max-w-xl">
-                  <h2 className="text-lg font-semibold mb-3 text-center">Quick Start Airports</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden relative">
+      <ParticleBackground />
+      <div className="fixed top-0 left-0 w-full z-20">
+        <Header />
+        <FavoritesBar />
+      </div>
+      <main className="flex items-center justify-center" style={{ height: 'calc(100vh - 154px)' }}>
+        <Routes>
+          <RouterRoute path="/" element={
+            <>
+              {selectedStations.length === 0 ? (
+                <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl p-8 rounded-3xl shadow-xl bg-white/70 dark:bg-gray-900/80 backdrop-blur-md">
+                  <div className="flex flex-col items-center mb-8">
+                    <div className="mb-4">
+                      <img src="/logo192.png" alt="AviWeather Logo" className="w-16 h-16 mx-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    </div>
+                    <h1 className="text-4xl sm:text-5xl font-extrabold text-center text-blue-900 dark:text-blue-200 mb-2 drop-shadow">Clear skies ahead with</h1>
+                    <span className="text-4xl sm:text-5xl font-extrabold text-blue-600 dark:text-blue-400 text-center mb-2 drop-shadow flex items-center gap-2">
+                      <span className="inline-block"><svg width="32" height="32" fill="none" viewBox="0 0 24 24"><path fill="#2563eb" d="M2.5 19.5l19-7.5-19-7.5v5l14 2.5-14 2.5v5z"/></svg></span>
+                      AviWeather
+                    </span>
+                    <p className="mb-6 text-lg text-gray-700 dark:text-gray-300 text-center max-w-xl">Modern aviation weather, NOTAMs, and route planning—built for real-world pilots.</p>
+                  </div>
+                  <div className="w-full mb-6">
+                    <div className="relative w-full max-w-md mx-auto">
+                      <SearchBar />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3 justify-center w-full mb-2">
                     {shuffledAirports.map(icao => (
                       <button
                         key={icao}
                         onClick={() => handleQuickStart(icao)}
-                        className="px-4 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-lg font-semibold transition"
+                        className="px-6 py-3 bg-white/80 dark:bg-gray-800/80 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold rounded-xl shadow transition text-lg border border-blue-200 dark:border-gray-700"
                       >
                         {icao}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Toggle controls at the very top */}
-                <div className="flex flex-wrap gap-4 items-center mb-4 print:hidden">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-sm">NOTAMs</span>
-                    <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                      <input type="checkbox" checked={showNotams} onChange={() => setShowNotams(!showNotams)} className="sr-only peer" />
-                      <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
-                      <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-sm">Show Simplified METAR</span>
-                    <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                      <input type="checkbox" checked={showMetar} onChange={() => setShowMetar(v => !v)} className="sr-only peer" />
-                      <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
-                      <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-sm">Show Simplified TAF</span>
-                    <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                      <input type="checkbox" checked={showTaf} onChange={() => setShowTaf(v => !v)} className="sr-only peer" />
-                      <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
-                      <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
-                    </span>
-                  </label>
-                </div>
-                <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  {/* Left column: METAR, NOTAMs */}
-                  <div className="flex flex-col gap-6">
-                    {weatherData[selectedStations[0]?.icao]?.metar && (
-                      <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} hideRaw={showMetar} />
-                    )}
-                    {showNotams && (
-                      <NotamDisplay icao={selectedStations[0]?.icao} />
-                    )}
-                    <WeatherReports
-                      sigmets={weatherData[selectedStations[0]?.icao]?.sigmet}
-                      airmets={weatherData[selectedStations[0]?.icao]?.airmet}
-                      pireps={weatherData[selectedStations[0]?.icao]?.pirep}
-                    />
+              ) : (
+                <>
+                  {/* Toggle controls at the very top */}
+                  <div className="flex flex-wrap gap-4 items-center mb-4 print:hidden">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-sm">NOTAMs</span>
+                      <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" checked={showNotams} onChange={() => setShowNotams(!showNotams)} className="sr-only peer" />
+                        <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+                        <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-sm">Show Simplified METAR</span>
+                      <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" checked={showMetar} onChange={() => setShowMetar(v => !v)} className="sr-only peer" />
+                        <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+                        <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-sm">Show Simplified TAF</span>
+                      <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" checked={showTaf} onChange={() => setShowTaf(v => !v)} className="sr-only peer" />
+                        <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+                        <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+                      </span>
+                    </label>
                   </div>
-                  {/* Right column: TAF, GFAs, Radar, Weather Cameras */}
-                  <div className="flex flex-col gap-6">
-                    {weatherData[selectedStations[0]?.icao]?.taf && (
-                      <div className="card p-4 animate-fade-in print:hidden">
-                        <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} hideRaw={showTaf} />
-                      </div>
-                    )}
-                    <GFADisplay icao={selectedStations[0]?.icao} />
-                    <RadarDisplay icao={selectedStations[0]?.icao} />
-                    <WeatherCameras icao={selectedStations[0]?.icao} />
+                  <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {/* Left column: METAR, NOTAMs */}
+                    <div className="flex flex-col gap-6">
+                      {weatherData[selectedStations[0]?.icao]?.metar && (
+                        <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} hideRaw={showMetar} />
+                      )}
+                      {showNotams && (
+                        <NotamDisplay icao={selectedStations[0]?.icao} />
+                      )}
+                      <WeatherReports
+                        sigmets={weatherData[selectedStations[0]?.icao]?.sigmet}
+                        airmets={weatherData[selectedStations[0]?.icao]?.airmet}
+                        pireps={weatherData[selectedStations[0]?.icao]?.pirep}
+                      />
+                    </div>
+                    {/* Right column: TAF, GFAs, Radar, Weather Cameras */}
+                    <div className="flex flex-col gap-6">
+                      {weatherData[selectedStations[0]?.icao]?.taf && (
+                        <div className="card p-4 animate-fade-in print:hidden">
+                          <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} hideRaw={showTaf} />
+                        </div>
+                      )}
+                      <GFADisplay icao={selectedStations[0]?.icao} />
+                      <RadarDisplay icao={selectedStations[0]?.icao} />
+                      <WeatherCameras icao={selectedStations[0]?.icao} />
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
-        } />
-        <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
-        <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
-      </Routes>
+                </>
+              )}
+            </>
+          } />
+          <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
+          <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
+        </Routes>
+      </main>
       <SpeedInsights />
     </div>
   );
