@@ -28,6 +28,8 @@ import MetarDisplay from './components/MetarDisplay';
 import TafDisplay from './components/TafDisplay';
 import { RoutePlanner } from './components/RoutePlanner';
 import type { Route } from './types';
+import StationInfo from './components/StationInfo';
+import WeatherReports from './components/WeatherReports';
 
 // Fix Leaflet's default icon path issues with bundlers
 // @ts-ignore
@@ -523,32 +525,50 @@ function App() {
         <RouterRoute path="/" element={
           <div className="container mx-auto px-4 py-8">
             {selectedStations.length === 0 ? (
-              <>
-                <h1 className="text-3xl font-bold mb-6">Welcome to AviWeather</h1>
-                <p className="mb-6 text-lg text-gray-700 dark:text-gray-300">Aviation weather, NOTAMs, and route planning for pilots. Search for an airport above to get started, or try a quick start below.</p>
-                <div className="mb-8">
-                  <h2 className="text-lg font-semibold mb-2">Quick Start Airports</h2>
-                  <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <h1 className="text-4xl font-extrabold mb-4 text-center">Welcome to AviWeather</h1>
+                <p className="mb-8 text-lg text-gray-700 dark:text-gray-300 text-center max-w-2xl">A modern aviation weather, NOTAM, and route planning app for pilots. Search for an airport above to get started, or try a quick start below.</p>
+                <div className="w-full max-w-xl">
+                  <h2 className="text-lg font-semibold mb-3 text-center">Quick Start Airports</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                     {shuffledAirports.map(icao => (
                       <button
                         key={icao}
                         onClick={() => handleQuickStart(icao)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                        className="px-4 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-lg font-semibold transition"
                       >
                         {icao}
                       </button>
                     ))}
                   </div>
                 </div>
-              </>
+              </div>
             ) : (
-              <WeatherDisplay
-                weatherData={weatherData[selectedStations[0]?.icao]}
-                station={selectedStations[0]}
-                lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated}
-                showNotams={showNotams}
-                setShowNotams={setShowNotams}
-              />
+              <>
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-1 min-w-0">
+                      <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
+                      <WeatherReports
+                        sigmets={weatherData[selectedStations[0]?.icao]?.sigmet}
+                        airmets={weatherData[selectedStations[0]?.icao]?.airmet}
+                        pireps={weatherData[selectedStations[0]?.icao]?.pirep}
+                      />
+                      {weatherData[selectedStations[0]?.icao]?.metar && (
+                        <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} />
+                      )}
+                      {weatherData[selectedStations[0]?.icao]?.taf && (
+                        <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col gap-6">
+                      <GFADisplay icao={selectedStations[0]?.icao} />
+                      <RadarDisplay icao={selectedStations[0]?.icao} />
+                      <WeatherCameras icao={selectedStations[0]?.icao} />
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         } />
