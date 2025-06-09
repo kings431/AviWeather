@@ -1,3 +1,6 @@
+export * from './airport';
+export * from './route';
+
 export type Station = {
   icao: string;
   name?: string;

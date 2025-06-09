@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MetarData, TafData, Station, WeatherData, TafPeriod, SigmetData, AirmetData, PirepData } from '../types';
+import { MetarData, TafData, Station, WeatherData, TafPeriod, SigmetData, AirmetData, PirepData, Route, Airport } from '../types';
 
 // API endpoints with CORS proxy
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
@@ -587,6 +587,115 @@ export const fetchNearestAirports = async (lat: number, lon: number, excludeIcao
     return [];
   } catch (error) {
     return [];
+  }
+};
+
+// Helper function to calculate distance between two points using haversine formula
+const haversine = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 3440.065; // Earth's radius in nautical miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+// Route planning related functions
+export const calculateRoute = async (departure: string, arrival: string): Promise<Route> => {
+  try {
+    // Fetch airport data for both airports
+    const [departureAirport, arrivalAirport] = await Promise.all([
+      fetchStationData(departure),
+      fetchStationData(arrival)
+    ]);
+
+    if (!departureAirport.latitude || !departureAirport.longitude || 
+        !arrivalAirport.latitude || !arrivalAirport.longitude) {
+      throw new Error('Invalid airport coordinates');
+    }
+
+    // Calculate direct distance using haversine formula
+    const distance = haversine(
+      departureAirport.latitude,
+      departureAirport.longitude,
+      arrivalAirport.latitude,
+      arrivalAirport.longitude
+    );
+
+    // For now, we'll use a simple direct route
+    // In a real implementation, this would use a proper routing algorithm
+    const waypoints = [departure, arrival];
+    
+    // Estimate flight time based on distance and typical cruise speed
+    const estimatedTime = Math.round(distance / 120 * 60); // Assuming 120 knots ground speed
+
+    return {
+      waypoints,
+      distance: Math.round(distance),
+      estimatedTime,
+      weatherConditions: [],
+      alternates: []
+    };
+  } catch (error) {
+    throw new Error('Failed to calculate route');
+  }
+};
+
+export const getRouteWeather = async (route: Route): Promise<WeatherData[]> => {
+  try {
+    // Fetch weather data for all waypoints
+    const weatherPromises = route.waypoints.map((icao: string) => fetchWeatherData(icao));
+    const weatherData = await Promise.all(weatherPromises);
+    return weatherData;
+  } catch (error) {
+    throw new Error('Failed to fetch route weather data');
+  }
+};
+
+export const findAlternateAirports = async (route: Route, maxDistance: number = 100): Promise<Airport[]> => {
+  try {
+    const [departure, arrival] = route.waypoints;
+    const [departureAirport, arrivalAirport] = await Promise.all([
+      fetchStationData(departure),
+      fetchStationData(arrival)
+    ]);
+
+    if (!arrivalAirport.latitude || !arrivalAirport.longitude) {
+      throw new Error('Invalid arrival airport coordinates');
+    }
+
+    // Find airports within maxDistance of the arrival airport
+    const nearbyAirports = await fetchNearestAirports(
+      arrivalAirport.latitude,
+      arrivalAirport.longitude,
+      arrival
+    );
+
+    // Filter airports based on distance and services
+    const alternates = nearbyAirports.filter((airport: Airport) => {
+      if (
+        airport.latitude === undefined ||
+        airport.longitude === undefined ||
+        arrivalAirport.latitude === undefined ||
+        arrivalAirport.longitude === undefined
+      ) {
+        return false;
+      }
+      const distance = haversine(
+        airport.latitude,
+        airport.longitude,
+        arrivalAirport.latitude,
+        arrivalAirport.longitude
+      );
+      return distance <= maxDistance;
+    });
+
+    return alternates;
+  } catch (error) {
+    throw new Error('Failed to find alternate airports');
   }
 };
 
