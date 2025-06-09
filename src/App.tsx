@@ -474,49 +474,7 @@ function App() {
 
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Route Planner</h1>
-        <div className="grid grid-cols-1 gap-8">
-          <div>
-            <RoutePlanner onRouteSelect={handleRouteSelect} />
-          </div>
-          <div>
-            {currentRoute && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-                <h2 className="text-2xl font-bold mb-4">Route Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">Waypoints</h3>
-                    <p className="font-mono">{currentRoute.waypoints.join(' → ')}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Distance</h3>
-                    <p>{currentRoute.distance} nautical miles</p>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Estimated Time</h3>
-                    <p>{currentRoute.estimatedTime} minutes</p>
-                  </div>
-                  {currentRoute.weatherConditions.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold">Weather Conditions</h3>
-                      <div className="space-y-2">
-                        {currentRoute.weatherConditions.map((condition, index) => (
-                          <div key={index} className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
-                            <p className="font-semibold">{condition.location}</p>
-                            <p>{condition.description}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Valid: {condition.validFrom} - {condition.validTo}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <RoutePlanner onRouteSelect={handleRouteSelect} />
       </div>
     );
   }
