@@ -620,6 +620,12 @@ function App() {
       .filter(s => typeof s.latitude === 'number' && typeof s.longitude === 'number')
       .map(s => [s.latitude, s.longitude]);
 
+    function suggestRoute() {
+      // TODO: Implement route optimization logic (NavCanada preferred routes, airway graph, etc.)
+      // For now, just set a stub route
+      setRoute('CYWG V300 YQT CYQT');
+    }
+
     return (
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
         <h1 className="text-2xl font-bold mb-4">Route Planner</h1>
@@ -691,13 +697,22 @@ function App() {
         )}
         <form onSubmit={handleSubmit} className="mb-6">
           <label className="block mb-2 font-semibold">Enter route (ICAO codes separated by space or comma):</label>
-          <input
-            type="text"
-            className="input w-full max-w-lg mb-2"
-            placeholder="CYWG YWG V300 YQT CYQT"
-            value={route}
-            onChange={e => setRoute(e.target.value)}
-          />
+          <div className="flex gap-2 items-center mb-2">
+            <input
+              type="text"
+              className="input w-full max-w-lg"
+              placeholder="CYWG YWG V300 YQT CYQT"
+              value={route}
+              onChange={e => setRoute(e.target.value)}
+            />
+            <button
+              type="button"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded shadow text-sm"
+              onClick={suggestRoute}
+            >
+              Suggest Route
+            </button>
+          </div>
           <label className="block mb-2 font-semibold mt-4">Enter alternate airports (ICAO codes separated by space or comma):</label>
           <input
             type="text"
@@ -810,7 +825,26 @@ function App() {
                   </LayersControl>
                   {/* Route markers (default icon) */}
                   {routeCoords.map((pos, idx) => (
-                    <Marker key={idx} position={pos}>
+                    <Marker
+                      key={idx}
+                      position={pos}
+                      draggable={true}
+                      eventHandlers={{
+                        dragend: (e) => {
+                          const marker = e.target;
+                          const newPos = marker.getLatLng();
+                          // Update the station's lat/lon
+                          setStations(stations => {
+                            const updated = [...stations];
+                            if (updated[idx]) {
+                              updated[idx] = { ...updated[idx], latitude: newPos.lat, longitude: newPos.lng };
+                            }
+                            return updated;
+                          });
+                          // Optionally, update the route input (could reverse-geocode to ICAO/waypoint later)
+                        },
+                      }}
+                    >
                       <Popup>
                         {stations[idx]?.icao || ''}<br />
                         {stations[idx]?.name || ''}
