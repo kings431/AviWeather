@@ -35,6 +35,10 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
   const [weatherToggles, setWeatherToggles] = useState<WeatherToggleType[]>(['METAR', 'TAF', 'NOTAM']);
   const [pendingDeparture, setPendingDeparture] = useState<string>('');
   const [pendingArrival, setPendingArrival] = useState<string>('');
+  const [inputValidation, setInputValidation] = useState({
+    departure: { isValid: true, message: '' },
+    arrival: { isValid: true, message: '' }
+  });
 
   const { favorites } = useStore();
   const { setCurrentRoute, setAlternateAirports, setLoading, setError: setRouteError } = useRouteStore();
@@ -62,22 +66,88 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
     }
   }, [selectedAircraft]);
 
+  const validateIcaoCode = (code: string): boolean => {
+    return /^[A-Z]{4}$/.test(code);
+  };
+
   const handleDepartureChange = (value: string) => {
-    setPendingDeparture(value.toUpperCase());
+    const upperValue = value.toUpperCase();
+    setPendingDeparture(upperValue);
+    setInputValidation(prev => ({
+      ...prev,
+      departure: {
+        isValid: upperValue.length === 0 || validateIcaoCode(upperValue),
+        message: upperValue.length > 0 && !validateIcaoCode(upperValue) ? 'Must be a 4-letter ICAO code' : ''
+      }
+    }));
   };
 
   const handleArrivalChange = (value: string) => {
-    setPendingArrival(value.toUpperCase());
+    const upperValue = value.toUpperCase();
+    setPendingArrival(upperValue);
+    setInputValidation(prev => ({
+      ...prev,
+      arrival: {
+        isValid: upperValue.length === 0 || validateIcaoCode(upperValue),
+        message: upperValue.length > 0 && !validateIcaoCode(upperValue) ? 'Must be a 4-letter ICAO code' : ''
+      }
+    }));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearchRoute();
+    }
   };
 
   const handleSearchRoute = () => {
-    if (pendingDeparture.length === 4 && pendingArrival.length === 4) {
-      setDeparture(pendingDeparture);
-      setArrival(pendingArrival);
-      calculateRoute(pendingDeparture, pendingArrival);
-    } else {
+    const isDepartureValid = validateIcaoCode(pendingDeparture);
+    const isArrivalValid = validateIcaoCode(pendingArrival);
+
+    setInputValidation({
+      departure: {
+        isValid: isDepartureValid,
+        message: !isDepartureValid ? 'Must be a 4-letter ICAO code' : ''
+      },
+      arrival: {
+        isValid: isArrivalValid,
+        message: !isArrivalValid ? 'Must be a 4-letter ICAO code' : ''
+      }
+    });
+
+    if (!isDepartureValid || !isArrivalValid) {
       setError('Please enter valid 4-letter ICAO codes for both departure and arrival.');
+      return;
     }
+
+    if (pendingDeparture === pendingArrival) {
+      setError('Departure and arrival airports cannot be the same.');
+      return;
+    }
+
+    setDeparture(pendingDeparture);
+    setArrival(pendingArrival);
+    calculateRoute(pendingDeparture, pendingArrival);
+  };
+
+  const handleClearRoute = () => {
+    setDeparture('');
+    setArrival('');
+    setPendingDeparture('');
+    setPendingArrival('');
+    setSuggestedRoute(null);
+    setWeatherData(null);
+    setError(null);
+    setInputValidation({
+      departure: { isValid: true, message: '' },
+      arrival: { isValid: true, message: '' }
+    });
+  };
+
+  const handleSwapAirports = () => {
+    const temp = pendingDeparture;
+    setPendingDeparture(pendingArrival);
+    setPendingArrival(temp);
   };
 
   const calculateRoute = async (dep: string, arr: string) => {
@@ -169,41 +239,66 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium mb-2">Departure</label>
-          <input
-            type="text"
-            value={pendingDeparture}
-            onChange={(e) => handleDepartureChange(e.target.value)}
-            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-            placeholder="Enter ICAO code"
-            maxLength={4}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={pendingDeparture}
+              onChange={(e) => handleDepartureChange(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className={`w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${
+                !inputValidation.departure.isValid ? 'border-red-500' : ''
+              }`}
+              placeholder="Enter ICAO code"
+              maxLength={4}
+            />
+            {!inputValidation.departure.isValid && (
+              <p className="text-red-500 text-xs mt-1">{inputValidation.departure.message}</p>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Arrival</label>
-          <input
-            type="text"
-            value={pendingArrival}
-            onChange={(e) => handleArrivalChange(e.target.value)}
-            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-            placeholder="Enter ICAO code"
-            maxLength={4}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={pendingArrival}
+              onChange={(e) => handleArrivalChange(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className={`w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${
+                !inputValidation.arrival.isValid ? 'border-red-500' : ''
+              }`}
+              placeholder="Enter ICAO code"
+              maxLength={4}
+            />
+            {!inputValidation.arrival.isValid && (
+              <p className="text-red-500 text-xs mt-1">{inputValidation.arrival.message}</p>
+            )}
+          </div>
         </div>
       </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Alternate Airports</label>
-        <AirportAutocomplete
-          onSelect={addAlternate}
-          exclude={[pendingDeparture, pendingArrival, ...alternates].filter(Boolean)}
-          placeholder="Add alternate airport (ICAO)"
-        />
+
+      <div className="flex gap-2 mb-4">
+        <button
+          className="flex-1 py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          onClick={handleSearchRoute}
+        >
+          Search Route
+        </button>
+        <button
+          className="py-2 px-4 bg-gray-600 text-white rounded hover:bg-gray-700 transition"
+          onClick={handleSwapAirports}
+          title="Swap departure and arrival"
+        >
+          ⇄
+        </button>
+        <button
+          className="py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 transition"
+          onClick={handleClearRoute}
+          title="Clear route"
+        >
+          Clear
+        </button>
       </div>
-      <button
-        className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition mb-6"
-        onClick={handleSearchRoute}
-      >
-        Search Route
-      </button>
 
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-2">Route Optimization</h3>
