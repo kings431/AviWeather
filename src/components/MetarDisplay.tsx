@@ -96,11 +96,14 @@ const MetarDisplay: React.FC<MetarDisplayProps> = ({ data, icao, hideRaw = false
               <FlightCategoryBadge category={data.flight_category} />
             </div>
           )}
-          {hideRaw ? (
-            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
-              {data.raw}
-            </div>
-          ) : (
+          
+          {/* Always show the formatted raw METAR */}
+          <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
+            {data.raw}
+          </div>
+
+          {/* Show simplified METAR only when hideRaw is false */}
+          {!hideRaw && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Wind Information */}
               <div className="flex items-start space-x-3">

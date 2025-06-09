@@ -239,11 +239,13 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false }) => {
         </div>
       </div>
 
-      {hideRaw ? (
-        <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
-          {data.raw}
-        </div>
-      ) : (
+      {/* Always show the formatted raw TAF */}
+      <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
+        {formatTaf(data.raw)}
+      </div>
+
+      {/* Show simplified TAF only when hideRaw is false */}
+      {!hideRaw && (
         <div className="space-y-4">
           {data.periods.map((period, index) => (
             <ForecastPeriod key={index} period={period} index={index} tafIssueTime={data.issue_time} />
