@@ -547,9 +547,8 @@ function App() {
               </div>
             ) : (
               <>
-                <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
-                {/* Toggle controls */}
-                <div className="flex flex-wrap gap-4 items-center mb-4 mt-6 print:hidden">
+                {/* Toggle controls at the very top */}
+                <div className="flex flex-wrap gap-4 items-center mb-4 print:hidden">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <span className="text-sm">NOTAMs</span>
                     <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
@@ -575,6 +574,7 @@ function App() {
                     </span>
                   </label>
                 </div>
+                <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   {/* Left column: METAR, NOTAMs */}
                   <div className="flex flex-col gap-6">
