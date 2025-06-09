@@ -579,7 +579,7 @@ function App() {
                   {/* Left column: METAR, NOTAMs */}
                   <div className="flex flex-col gap-6">
                     {weatherData[selectedStations[0]?.icao]?.metar && (
-                      <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} hideRaw={!showMetar} />
+                      <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} hideRaw={showMetar} />
                     )}
                     {showNotams && (
                       <NotamDisplay icao={selectedStations[0]?.icao} />

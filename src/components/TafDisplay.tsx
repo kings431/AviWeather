@@ -223,58 +223,33 @@ function formatTaf(taf: string): string {
 }
 
 const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false }) => {
-  // Support both legacy (forecast) and new (periods) keys for compatibility
-  const periods = (data && (data.periods || (data as any).forecast)) || [];
-  const issued = (data && (data.issue_time || (data as any).issued)) || '';
-  const validFrom = data.startValidity || data.valid_time || (data as any).valid_from || '';
-  const validTo = data.endValidity || data.valid_time || (data as any).valid_to || '';
-  const tafIssueTime = (data.issue_time || (data as any).issued) || '';
-
-  if (!data || !Array.isArray(periods) || periods.length === 0) {
-    return (
-      <div className="card p-4 animate-fade-in print:hidden">
-        <h3 className="text-xl font-medium">TAF</h3>
-        <div className="text-gray-500 dark:text-gray-400 mt-2">No TAF data available.</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4 animate-fade-in print:hidden">
-      <h3 className="text-xl font-medium">TAF</h3>
-      {/* Raw TAF at the top, unless hideRaw is true */}
-      {!hideRaw && (
-        <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
+    <div className="space-y-4">
+      <div className="flex justify-between items-start">
+        <h3 className="text-xl font-medium">TAF</h3>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-1">
+            <Calendar size={16} />
+            <span>Valid: {formatDateFromZulu(data.valid_time)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock size={16} />
+            <span>Issued: {formatTimeFromZulu(data.issue_time)}</span>
+          </div>
+        </div>
+      </div>
+
+      {hideRaw ? (
+        <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto">
           {data.raw}
         </div>
-      )}
-      <div>
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {validFrom && validTo && (
-            <div className="flex items-center">
-              <Calendar size={14} className="mr-1" />
-              <span>Valid: {formatDateFromZulu(validFrom)} - {formatDateFromZulu(validTo)}</span>
-            </div>
-          )}
-          {issued && (
-            <div className="flex items-center">
-              <Clock size={14} className="mr-1" />
-              <span>Issued: {formatDateFromZulu(issued)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-      <pre className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto whitespace-pre-line">
-        {formatTaf(data.raw)}
-      </pre>
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Forecast Periods</h4>
-        <div className="space-y-3">
-          {periods.map((period, index) => (
-            <ForecastPeriod key={index} period={period} index={index} tafIssueTime={tafIssueTime} />
+      ) : (
+        <div className="space-y-4">
+          {data.periods.map((period, index) => (
+            <ForecastPeriod key={index} period={period} index={index} tafIssueTime={data.issue_time} />
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };
