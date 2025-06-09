@@ -529,51 +529,49 @@ function App() {
         <FavoritesBar />
       </div>
       <main
-        className={
-          selectedStations.length === 0
-            ? 'flex items-center justify-center'
-            : 'min-h-screen flex flex-col'
-        }
-        style={
-          selectedStations.length === 0
-            ? { height: 'calc(100vh - 154px)' }
-            : undefined
-        }
+        className={selectedStations.length === 0 ? 'flex items-center justify-center' : ''}
+        style={selectedStations.length === 0 ? { height: 'calc(100vh - 154px)' } : undefined}
       >
-        <Routes>
-          <RouterRoute path="/" element={
-            <>
-              {selectedStations.length === 0 ? (
-                <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl p-8 rounded-3xl shadow-xl bg-white/70 dark:bg-gray-900/80 backdrop-blur-md">
-                  <div className="flex flex-col items-center mb-8">
-                    <div className="mb-4">
-                      <img src="/logo192.png" alt="AviWeather Logo" className="w-16 h-16 mx-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    </div>
-                    <h1 className="text-4xl sm:text-5xl font-extrabold text-center text-blue-900 dark:text-blue-200 mb-2 drop-shadow">Clear skies ahead with</h1>
-                    <span className="text-4xl sm:text-5xl font-extrabold text-blue-600 dark:text-blue-400 text-center mb-2 drop-shadow flex items-center gap-2">
-                      <span className="inline-block"><svg width="32" height="32" fill="none" viewBox="0 0 24 24"><path fill="#2563eb" d="M2.5 19.5l19-7.5-19-7.5v5l14 2.5-14 2.5v5z"/></svg></span>
-                      AviWeather
-                    </span>
-                    <p className="mb-6 text-lg text-gray-700 dark:text-gray-300 text-center max-w-xl">Modern aviation weather, NOTAMs, and route planning—built for real-world pilots.</p>
+        {selectedStations.length === 0 ? (
+          <Routes>
+            <RouterRoute path="/" element={
+              <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl p-8 rounded-3xl shadow-xl bg-white/70 dark:bg-gray-900/80 backdrop-blur-md mt-[120px] sm:mt-">
+                <div className="flex flex-col items-center mb-8">
+                  <div className="mb-4">
+                    <img src="/logo192.png" alt="AviWeather Logo" className="w-16 h-16 mx-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   </div>
-                  <div className="w-full mb-6">
-                    <div className="relative w-full max-w-md mx-auto">
-                      <SearchBar />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-3 justify-center w-full mb-2">
-                    {shuffledAirports.map(icao => (
-                      <button
-                        key={icao}
-                        onClick={() => handleQuickStart(icao)}
-                        className="px-6 py-3 bg-white/80 dark:bg-gray-800/80 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold rounded-xl shadow transition text-lg border border-blue-200 dark:border-gray-700"
-                      >
-                        {icao}
-                      </button>
-                    ))}
+                  <h1 className="text-4xl sm:text-5xl font-extrabold text-center text-blue-900 dark:text-blue-200 mb-2 drop-shadow">Clear skies ahead with</h1>
+                  <span className="text-4xl sm:text-5xl font-extrabold text-blue-600 dark:text-blue-400 text-center mb-2 drop-shadow flex items-center gap-2">
+                    <span className="inline-block"><svg width="32" height="32" fill="none" viewBox="0 0 24 24"><path fill="#2563eb" d="M2.5 19.5l19-7.5-19-7.5v5l14 2.5-14 2.5v5z"/></svg></span>
+                    AviWeather
+                  </span>
+                  <p className="mb-6 text-lg text-gray-700 dark:text-gray-300 text-center max-w-xl">Modern aviation weather, NOTAMs, and route planning—built for real-world pilots.</p>
+                </div>
+                <div className="w-full mb-6">
+                  <div className="relative w-full max-w-md mx-auto">
+                    <SearchBar />
                   </div>
                 </div>
-              ) : (
+                <div className="flex flex-wrap gap-3 justify-center w-full mb-2">
+                  {shuffledAirports.map(icao => (
+                    <button
+                      key={icao}
+                      onClick={() => handleQuickStart(icao)}
+                      className="px-6 py-3 bg-white/80 dark:bg-gray-800/80 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold rounded-xl shadow transition text-lg border border-blue-200 dark:border-gray-700"
+                    >
+                      {icao}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            } />
+            <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
+            <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
+          </Routes>
+        ) : (
+          <div className="container mx-auto max-w-7xl px-4 py-8 w-full pt-[200px] sm:pt-[154px]">
+            <Routes>
+              <RouterRoute path="/" element={
                 <>
                   {/* Toggle controls at the very top */}
                   <div className="flex flex-wrap gap-4 items-center mb-4 print:hidden">
@@ -631,12 +629,12 @@ function App() {
                     </div>
                   </div>
                 </>
-              )}
-            </>
-          } />
-          <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
-          <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
-        </Routes>
+              } />
+              <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
+              <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
+            </Routes>
+          </div>
+        )}
       </main>
       <SpeedInsights />
     </div>
