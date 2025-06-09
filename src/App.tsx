@@ -103,6 +103,8 @@ function App() {
 
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showNotams, setShowNotams] = useState(true);
+  const [showMetar, setShowMetar] = useState(true);
+  const [showTaf, setShowTaf] = useState(true);
 
   // Surface type mapping for OpenAIP mainComposite codes
   const surfaceTypeMap: Record<number, string> = {
@@ -546,11 +548,41 @@ function App() {
             ) : (
               <>
                 <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
+                {/* Toggle controls */}
+                <div className="flex flex-wrap gap-4 items-center mb-4 mt-6 print:hidden">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm">NOTAMs</span>
+                    <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                      <input type="checkbox" checked={showNotams} onChange={() => setShowNotams(!showNotams)} className="sr-only peer" />
+                      <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+                      <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm">Show Simplified METAR</span>
+                    <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                      <input type="checkbox" checked={showMetar} onChange={() => setShowMetar(v => !v)} className="sr-only peer" />
+                      <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+                      <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-sm">Show Simplified TAF</span>
+                    <span className="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                      <input type="checkbox" checked={showTaf} onChange={() => setShowTaf(v => !v)} className="sr-only peer" />
+                      <span className="block w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition" />
+                      <span className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4" />
+                    </span>
+                  </label>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   {/* Left column: METAR, NOTAMs */}
                   <div className="flex flex-col gap-6">
                     {weatherData[selectedStations[0]?.icao]?.metar && (
-                      <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} />
+                      <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} hideRaw={!showMetar} />
+                    )}
+                    {showNotams && (
+                      <NotamDisplay icao={selectedStations[0]?.icao} />
                     )}
                     <WeatherReports
                       sigmets={weatherData[selectedStations[0]?.icao]?.sigmet}
@@ -562,7 +594,7 @@ function App() {
                   <div className="flex flex-col gap-6">
                     {weatherData[selectedStations[0]?.icao]?.taf && (
                       <div className="card p-4 animate-fade-in print:hidden">
-                        <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} />
+                        <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} hideRaw={!showTaf} />
                       </div>
                     )}
                     <GFADisplay icao={selectedStations[0]?.icao} />
