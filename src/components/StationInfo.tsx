@@ -6,6 +6,7 @@ import tzlookup from 'tz-lookup';
 import { DateTime } from 'luxon';
 import UpdateIndicator from './UpdateIndicator';
 import { useNavigate } from 'react-router-dom';
+import RefreshButton from './RefreshButton';
 
 interface StationInfoProps {
   station: Station;
@@ -89,6 +90,15 @@ const StationInfo: React.FC<StationInfoProps> = ({ station, lastUpdated }) => {
         </div>
         {/* Right side: Local and Zulu time, and favorite button */}
         <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1 mt-2 sm:mt-0">
+          <div className="flex gap-2 mb-1">
+            <button
+              onClick={() => window.print()}
+              className="print:hidden px-3 py-1 rounded bg-primary-600 text-white text-xs sm:text-sm hover:bg-primary-700"
+            >
+              Print
+            </button>
+            <RefreshButton stationId={station.icao} />
+          </div>
           <div className="text-xs sm:text-xs text-gray-500 dark:text-gray-400">
             Local Time: <span className="font-mono">{localTimeString} {localTzAbbr && `(${localTzAbbr})`}</span>
           </div>
