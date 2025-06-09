@@ -4,7 +4,7 @@ import { Calendar, Clock } from 'lucide-react';
 
 interface TafDisplayProps {
   data: TafData;
-  hideRaw?: boolean;
+  hideSimplified?: boolean;
   hideTitle?: boolean;
 }
 
@@ -223,7 +223,7 @@ function formatTaf(taf: string): string {
   return lines.join('\n');
 }
 
-const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false, hideTitle = false }) => {
+const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideSimplified = false, hideTitle = false }) => {
   // Support both legacy (forecast) and new (periods) keys for compatibility
   const periods = (data && (data.periods || (data as any).forecast)) || [];
   const issued = (data && (data.issue_time || (data as any).issued)) || '';
@@ -243,39 +243,42 @@ const TafDisplay: React.FC<TafDisplayProps> = ({ data, hideRaw = false, hideTitl
   return (
     <div className="space-y-4 animate-fade-in print:hidden">
       {!hideTitle && <h3 className="text-xl font-medium">TAF</h3>}
-      {/* Raw TAF at the top, unless hideRaw is true */}
-      {!hideRaw && (
-        <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
-          {data.raw}
-        </div>
+      {/* Always show raw TAF */}
+      <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto mb-4">
+        {data.raw}
+      </div>
+      {/* Only show simplified/parsed view if not hidden */}
+      {!hideSimplified && (
+        <>
+          <div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {validFrom && validTo && (
+                <div className="flex items-center">
+                  <Calendar size={14} className="mr-1" />
+                  <span>Valid: {formatDateFromZulu(validFrom)} - {formatDateFromZulu(validTo)}</span>
+                </div>
+              )}
+              {issued && (
+                <div className="flex items-center">
+                  <Clock size={14} className="mr-1" />
+                  <span>Issued: {formatDateFromZulu(issued)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <pre className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto whitespace-pre-line">
+            {formatTaf(data.raw)}
+          </pre>
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Forecast Periods</h4>
+            <div className="space-y-3">
+              {periods.map((period, index) => (
+                <ForecastPeriod key={index} period={period} index={index} tafIssueTime={tafIssueTime} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
-      <div>
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {validFrom && validTo && (
-            <div className="flex items-center">
-              <Calendar size={14} className="mr-1" />
-              <span>Valid: {formatDateFromZulu(validFrom)} - {formatDateFromZulu(validTo)}</span>
-            </div>
-          )}
-          {issued && (
-            <div className="flex items-center">
-              <Clock size={14} className="mr-1" />
-              <span>Issued: {formatDateFromZulu(issued)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-      <pre className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm overflow-x-auto whitespace-pre-line">
-        {formatTaf(data.raw)}
-      </pre>
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Forecast Periods</h4>
-        <div className="space-y-3">
-          {periods.map((period, index) => (
-            <ForecastPeriod key={index} period={period} index={index} tafIssueTime={tafIssueTime} />
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

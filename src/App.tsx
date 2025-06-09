@@ -594,7 +594,7 @@ function App() {
                   <div className="flex flex-col gap-6">
                     {weatherData[selectedStations[0]?.icao]?.taf && (
                       <div className="card p-4 animate-fade-in print:hidden">
-                        <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} hideRaw={!showTaf} />
+                        <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} hideSimplified={!showTaf} />
                       </div>
                     )}
                     <GFADisplay icao={selectedStations[0]?.icao} />
