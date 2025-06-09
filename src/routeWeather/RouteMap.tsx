@@ -42,7 +42,6 @@ const RouteMap: React.FC<RouteMapProps> = ({ waypoints, alternates, weatherToggl
             attribution="&copy; OpenStreetMap contributors"
           />
         </LayersControl.BaseLayer>
-        {/* Weather overlays can be added here based on weatherToggles */}
         {weatherToggles.includes('RADAR') && (
           <LayersControl.Overlay checked name="RainViewer Radar">
             <TileLayer
@@ -53,17 +52,12 @@ const RouteMap: React.FC<RouteMapProps> = ({ waypoints, alternates, weatherToggl
           </LayersControl.Overlay>
         )}
       </LayersControl>
-      {/* Route polyline */}
       <Polyline positions={positions} color="blue" />
-      {/* Waypoint markers */}
       {waypoints.map(wp => (
-        <Marker key={wp.icao} position={[wp.lat, wp.lon]} icon={defaultIcon}>
-        </Marker>
+        <Marker key={wp.icao} position={[wp.lat, wp.lon]} icon={defaultIcon} />
       ))}
-      {/* Alternate airport markers */}
       {alternates.map(alt => (
-        <Marker key={alt.icao} position={[alt.lat, alt.lon]} icon={greenIcon}>
-        </Marker>
+        <Marker key={alt.icao} position={[alt.lat, alt.lon]} icon={greenIcon} />
       ))}
     </MapContainer>
   );
