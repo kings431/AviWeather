@@ -659,11 +659,8 @@ function App() {
                       {/* METAR */}
                       <div>
                         <h3 className="text-base font-semibold mb-1">METAR</h3>
-                        {s.weather?.metar ? (
-                          <>
-                            <FlightCategoryBadge category={s.weather.metar.flight_category} />
-                            <MetarDisplay data={s.weather.metar} icao={s.icao} hideRaw={false} hideBadge={true} />
-                          </>
+                        {s.weather?.metar?.raw ? (
+                          <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.metar.raw}</pre>
                         ) : (
                           <div className="text-gray-500">No METAR available</div>
                         )}
@@ -672,8 +669,8 @@ function App() {
                       {/* TAF */}
                       <div>
                         <h3 className="text-base font-semibold mb-1">TAF</h3>
-                        {s.weather?.taf ? (
-                          <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
+                        {s.weather?.taf?.raw ? (
+                          <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.taf.raw}</pre>
                         ) : (
                           <div className="text-gray-500">No TAF available</div>
                         )}
@@ -682,7 +679,7 @@ function App() {
                       {/* NOTAMs */}
                       <div>
                         <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
-                        <NotamDisplay icao={s.icao} />
+                        <NotamDisplay icao={s.icao} rawStyle={true} />
                       </div>
                     </div>
                   </li>
@@ -702,11 +699,8 @@ function App() {
                         {/* METAR */}
                         <div>
                           <h3 className="text-base font-semibold mb-1">METAR</h3>
-                          {s.weather?.metar ? (
-                            <>
-                              <FlightCategoryBadge category={s.weather.metar.flight_category} />
-                              <MetarDisplay data={s.weather.metar} icao={s.icao} hideRaw={false} hideBadge={true} />
-                            </>
+                          {s.weather?.metar?.raw ? (
+                            <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.metar.raw}</pre>
                           ) : (
                             <div className="text-gray-500">No METAR available</div>
                           )}
@@ -715,8 +709,8 @@ function App() {
                         {/* TAF */}
                         <div>
                           <h3 className="text-base font-semibold mb-1">TAF</h3>
-                          {s.weather?.taf ? (
-                            <TafDisplay data={s.weather.taf} hideRaw={false} hideTitle={true} />
+                          {s.weather?.taf?.raw ? (
+                            <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.taf.raw}</pre>
                           ) : (
                             <div className="text-gray-500">No TAF available</div>
                           )}
@@ -725,7 +719,7 @@ function App() {
                         {/* NOTAMs */}
                         <div>
                           <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
-                          <NotamDisplay icao={s.icao} />
+                          <NotamDisplay icao={s.icao} rawStyle={true} />
                         </div>
                       </div>
                     </li>

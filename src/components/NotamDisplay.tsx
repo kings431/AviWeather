@@ -5,14 +5,13 @@ import axios from 'axios';
 
 interface NotamDisplayProps {
   icao: string;
+  rawStyle?: boolean;
 }
 
-const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
+const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao, rawStyle }) => {
   const [notams, setNotams] = useState<Notam[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-
 
   useEffect(() => {
     let isMounted = true;
@@ -68,7 +67,7 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
 
   if (notams.length === 0) {
     return (
-      <div className="p-4 text-gray-600 dark:text-gray-400">
+      <div className={rawStyle ? "text-gray-500" : "p-4 text-gray-600 dark:text-gray-400"}>
         No NOTAMs found for {icao}
       </div>
     );
@@ -107,8 +106,23 @@ const NotamDisplay: React.FC<NotamDisplayProps> = ({ icao }) => {
         const bodyLines = lines.filter(
           line => line !== headerLine && line !== validityLine
         );
-        const body = bodyLines.join('\n').replace(/^[ED]\)\s*/gm, ''); // Remove E) or D) at start of lines
+        const body = bodyLines.join('\n').replace(/^[ED]\)\s*/gm, '');
 
+        if (rawStyle) {
+          // Compact, raw-style formatting for route planner
+          return (
+            <pre
+              key={notam.id}
+              className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto mb-2"
+            >
+              {headerLine}
+              {validity ? `\n[${validity}]` : ''}
+              {body ? `\n${body}` : ''}
+            </pre>
+          );
+        }
+
+        // Default (full card) formatting
         return (
           <div
             key={notam.id}
