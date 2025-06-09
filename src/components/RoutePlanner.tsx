@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import useStore from '../store';
 import { useRouteStore } from '../store/routeStore';
 import { fetchWeatherData, fetchStationData, fetchNearestAirports } from '../services/weatherApi';
@@ -103,14 +103,17 @@ function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number
   return (brng + 360) % 360;
 }
 
-const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([
-    { icao: '' }, // Departure
-    { icao: '' }, // Arrival
-  ]);
-  const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [metarData, setMetarData] = useState<Record<string, any>>({});
-  const [tafData, setTafData] = useState<Record<string, any>>({});
+const RoutePlanner: React.FC<RoutePlannerProps> = memo(({ onRouteSelect }) => {
+  const {
+    routeWaypoints,
+    setRouteWaypoints,
+    routeData,
+    setRouteData,
+    metarData,
+    setMetarData,
+    tafData,
+    setTafData,
+  } = useStore();
   const [validation, setValidation] = useState<boolean[]>([true, true]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +132,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
   const { favorites } = useStore();
   const { setCurrentRoute, setError: setRouteError } = useRouteStore();
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const aircraftPresets = [
     { label: 'Cessna 172', speed: 120 },
@@ -142,80 +146,55 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   const [selectedAircraft, setSelectedAircraft] = useState(aircraftPresets[0].label);
   const [cruiseSpeed, setCruiseSpeed] = useState<number>(aircraftPresets[0].speed);
 
+  // Add local state for input values
+  const [localInputs, setLocalInputs] = useState<string[]>([]);
+
+  // Initialize local inputs when routeWaypoints change
   useEffect(() => {
-    const preset = aircraftPresets.find(a => a.label === selectedAircraft);
-    if (preset) {
-      if (selectedAircraft === 'Custom') {
-        setCruiseSpeed(prev => (typeof prev === 'number' && prev > 0 ? prev : 120));
-      } else {
-        setCruiseSpeed(preset.speed);
-      }
-    }
-  }, [selectedAircraft]);
+    setLocalInputs(routeWaypoints.map(wp => wp.icao));
+  }, [routeWaypoints.length]); // Only reinitialize when number of waypoints changes
 
-  const handleWaypointChange = (idx: number, icao: string) => {
-    setWaypoints(wps => wps.map((wp, i) => i === idx ? { ...wp, icao: icao.toUpperCase() } : wp));
-    setValidation(v => v.map((valid, i) => i === idx ? /^[A-Z0-9]{4}$/.test(icao.toUpperCase()) : valid));
-  };
+  const handleWaypointChange = useCallback((idx: number, value: string) => {
+    // Update local state immediately
+    setLocalInputs(prev => prev.map((v, i) => i === idx ? value.toUpperCase() : v));
+    
+    // Update global state after a short delay
+    const newIcao = value.toUpperCase();
+    setRouteWaypoints((wps: Waypoint[]) => wps.map((wp, i) => i === idx ? { ...wp, icao: newIcao } : wp));
+    setValidation(v => v.map((valid, i) => i === idx ? /^[A-Z0-9]{4}$/.test(newIcao) : valid));
+  }, [setRouteWaypoints]);
 
-  const addWaypoint = () => {
-    setWaypoints(wps => [
+  // Memoize the add waypoint handler
+  const addWaypoint = useCallback(() => {
+    setRouteWaypoints((wps: Waypoint[]) => [
       ...wps.slice(0, -1),
       { icao: '' },
       wps[wps.length - 1],
     ]);
     setValidation(v => [...v.slice(0, -1), true, v[v.length - 1]]);
-  };
+  }, [setRouteWaypoints]);
 
-  const removeWaypoint = (idx: number) => {
-    setWaypoints(wps => wps.filter((_, i) => i !== idx));
+  // Memoize the remove waypoint handler
+  const removeWaypoint = useCallback((idx: number) => {
+    setRouteWaypoints((wps: Waypoint[]) => wps.filter((_, i) => i !== idx));
     setValidation(v => v.filter((_, i) => i !== idx));
-  };
+  }, [setRouteWaypoints]);
 
-  const findAlternates = async (destinationIcao: string, destLat: number, destLon: number) => {
-    try {
-      const nearbyAirports = await fetchNearestAirports(destLat, destLon, destinationIcao);
-      
-      const alternates: AlternateAirport[] = nearbyAirports
-        .filter((airport: any) => {
-          const aptLat = airport.geometry?.coordinates?.[1];
-          const aptLon = airport.geometry?.coordinates?.[0];
-          if (typeof aptLat !== 'number' || typeof aptLon !== 'number') return false;
-          
-          const distance = haversine(destLat, destLon, aptLat, aptLon);
-          return distance <= 100 && airport.icao && airport.icao !== destinationIcao; // Within 100nm
-        })
-        .map((airport: any) => {
-          const aptLat = airport.geometry.coordinates[1];
-          const aptLon = airport.geometry.coordinates[0];
-          const distance = haversine(destLat, destLon, aptLat, aptLon);
-          const brng = bearing(destLat, destLon, aptLat, aptLon);
-          
-          return {
-            icao: airport.icao,
-            name: airport.name || `${airport.icao} Airport`,
-            distance: Math.round(distance),
-            bearing: Math.round(brng),
-            lat: aptLat,
-            lon: aptLon
-          };
-        })
-        .sort((a: AlternateAirport, b: AlternateAirport) => a.distance - b.distance)
-        .slice(0, 5); // Top 5 closest alternates
+  // Memoize the toggle section handler
+  const toggleSection = useCallback((section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  }, []);
 
-      setAlternateAirports(alternates);
-    } catch (error) {
-      console.error('Error finding alternates:', error);
-      setAlternateAirports([]);
-    }
-  };
-
-  const findRoute = async () => {
+  // Memoize the find route handler
+  const findRoute = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     // Validate ICAOs
-    const valid = waypoints.map(wp => /^[A-Z0-9]{4}$/.test(wp.icao));
+    const valid = routeWaypoints.map(wp => /^[A-Z0-9]{4}$/.test(wp.icao));
     setValidation(valid);
     if (valid.some(v => !v)) { 
       setIsLoading(false); 
@@ -224,7 +203,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
     // Fetch lat/lon for each waypoint
     const wpsWithCoords = await Promise.all(
-      waypoints.map(async wp => {
+      routeWaypoints.map(async wp => {
         const coords = await fetchWaypointLatLon(wp.icao);
         return coords ? { ...wp, ...coords } : { ...wp };
       })
@@ -236,7 +215,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       return;
     }
 
-    setWaypoints(wpsWithCoords);
+    setRouteWaypoints(wpsWithCoords);
 
     // Calculate distance (great-circle) and ETE
     let distance = 0;
@@ -289,20 +268,62 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       setError(errorMessage);
       setRouteError(errorMessage);
     }
+  }, [routeWaypoints, cruiseSpeed, onRouteSelect, setCurrentRoute, setRouteError]);
+
+  useEffect(() => {
+    const preset = aircraftPresets.find(a => a.label === selectedAircraft);
+    if (preset) {
+      if (selectedAircraft === 'Custom') {
+        setCruiseSpeed(prev => (typeof prev === 'number' && prev > 0 ? prev : 120));
+      } else {
+        setCruiseSpeed(preset.speed);
+      }
+    }
+  }, [selectedAircraft]);
+
+  const findAlternates = async (destinationIcao: string, destLat: number, destLon: number) => {
+    try {
+      const nearbyAirports = await fetchNearestAirports(destLat, destLon, destinationIcao);
+      
+      const alternates: AlternateAirport[] = nearbyAirports
+        .filter((airport: any) => {
+          const aptLat = airport.geometry?.coordinates?.[1];
+          const aptLon = airport.geometry?.coordinates?.[0];
+          if (typeof aptLat !== 'number' || typeof aptLon !== 'number') return false;
+          
+          const distance = haversine(destLat, destLon, aptLat, aptLon);
+          return distance <= 100 && airport.icao && airport.icao !== destinationIcao; // Within 100nm
+        })
+        .map((airport: any) => {
+          const aptLat = airport.geometry.coordinates[1];
+          const aptLon = airport.geometry.coordinates[0];
+          const distance = haversine(destLat, destLon, aptLat, aptLon);
+          const brng = bearing(destLat, destLon, aptLat, aptLon);
+          
+          return {
+            icao: airport.icao,
+            name: airport.name || `${airport.icao} Airport`,
+            distance: Math.round(distance),
+            bearing: Math.round(brng),
+            lat: aptLat,
+            lon: aptLon
+          };
+        })
+        .sort((a: AlternateAirport, b: AlternateAirport) => a.distance - b.distance)
+        .slice(0, 5); // Top 5 closest alternates
+
+      setAlternateAirports(alternates);
+    } catch (error) {
+      console.error('Error finding alternates:', error);
+      setAlternateAirports([]);
+    }
   };
 
-  const position: LatLngExpression = waypoints.length > 0 && waypoints[0].lat && waypoints[0].lon
-    ? [waypoints[0].lat, waypoints[0].lon]
+  const position: LatLngExpression = routeWaypoints.length > 0 && routeWaypoints[0].lat && routeWaypoints[0].lon
+    ? [routeWaypoints[0].lat, routeWaypoints[0].lon]
     : [49.91, -97.24];
 
-  const positions = waypoints.filter(wp => wp.lat && wp.lon).map(wp => [wp.lat!, wp.lon!] as [number, number]);
-
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
+  const positions = routeWaypoints.filter(wp => wp.lat && wp.lon).map(wp => [wp.lat!, wp.lon!] as [number, number]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -321,8 +342,9 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-4">
               <label className="block text-sm text-gray-500 mb-2">From</label>
               <input
+                ref={el => inputRefs.current[0] = el}
                 type="text"
-                value={waypoints[0]?.icao || ''}
+                value={localInputs[0] || ''}
                 onChange={(e) => handleWaypointChange(0, e.target.value)}
                 maxLength={4}
                 className={`w-full bg-gray-100 border ${validation[0] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
@@ -342,11 +364,12 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             </div>
 
             {/* Intermediate Waypoints */}
-            {waypoints.slice(1, -1).map((wp, idx) => (
+            {routeWaypoints.slice(1, -1).map((wp, idx) => (
               <div key={idx + 1} className="mb-4 flex items-center space-x-2">
                 <input
+                  ref={el => inputRefs.current[idx + 1] = el}
                   type="text"
-                  value={wp.icao}
+                  value={localInputs[idx + 1] || ''}
                   onChange={(e) => handleWaypointChange(idx + 1, e.target.value)}
                   maxLength={4}
                   className={`flex-1 bg-gray-100 border ${validation[idx + 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
@@ -365,11 +388,12 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="mb-6">
               <label className="block text-sm text-gray-500 mb-2">To</label>
               <input
+                ref={el => inputRefs.current[routeWaypoints.length - 1] = el}
                 type="text"
-                value={waypoints[waypoints.length - 1]?.icao || ''}
-                onChange={(e) => handleWaypointChange(waypoints.length - 1, e.target.value)}
+                value={localInputs[routeWaypoints.length - 1] || ''}
+                onChange={(e) => handleWaypointChange(routeWaypoints.length - 1, e.target.value)}
                 maxLength={4}
-                className={`w-full bg-gray-100 border ${validation[waypoints.length - 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`w-full bg-gray-100 border ${validation[routeWaypoints.length - 1] === false ? 'border-red-500' : 'border-gray-200'} rounded-lg px-3 py-2 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="ICAO"
               />
             </div>
@@ -412,12 +436,12 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             <div className="p-6 border-b border-gray-200 dark:border-gray-800">
               <h3 className="text-sm font-semibold text-gray-500 mb-3">Route Details</h3>
               <div className="space-y-2">
-                {waypoints.map((wp, idx) => (
+                {routeWaypoints.map((wp, idx) => (
                   <div key={idx} className="flex justify-between items-center py-2">
                     <div>
                       <div className="font-mono text-sm">{wp.icao}</div>
                       <div className="text-xs text-gray-500">
-                        {idx === 0 ? 'From' : idx === waypoints.length - 1 ? 'To' : 'Via'}
+                        {idx === 0 ? 'From' : idx === routeWaypoints.length - 1 ? 'To' : 'Via'}
                       </div>
                     </div>
                     {wp.lat && wp.lon && (
@@ -512,14 +536,14 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
                   />
                 )}
                 
-                {waypoints.map((wp, idx) =>
+                {routeWaypoints.map((wp, idx) =>
                   wp.lat && wp.lon ? (
                     <Marker key={wp.icao + idx} position={[wp.lat, wp.lon]}>
                       <Popup>
                         <div className="text-slate-900">
                           <div className="font-mono font-semibold">{wp.icao}</div>
                           <div className="text-sm">
-                            {idx === 0 ? 'Departure' : idx === waypoints.length - 1 ? 'Destination' : 'Waypoint'}
+                            {idx === 0 ? 'Departure' : idx === routeWaypoints.length - 1 ? 'Destination' : 'Waypoint'}
                           </div>
                           <div className="text-xs mt-1">
                             {wp.lat.toFixed(4)}, {wp.lon.toFixed(4)}
@@ -570,7 +594,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
               
               {expandedSections.metar && (
                 <div className="mt-2 space-y-3">
-                  {waypoints.filter(wp => wp.icao).map((wp) => (
+                  {routeWaypoints.filter(wp => wp.icao).map((wp) => (
                     <div key={wp.icao} className="bg-gray-100 rounded-lg p-3">
                       <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
                       <div className="text-xs text-gray-500 font-mono leading-relaxed">
@@ -594,7 +618,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
               
               {expandedSections.taf && (
                 <div className="mt-2 space-y-3">
-                  {waypoints.filter(wp => wp.icao).map((wp) => (
+                  {routeWaypoints.filter(wp => wp.icao).map((wp) => (
                     <div key={wp.icao} className="bg-gray-100 rounded-lg p-3">
                       <div className="font-mono text-sm font-semibold mb-2">{wp.icao}</div>
                       <div className="text-xs text-gray-500 font-mono leading-relaxed">
@@ -643,6 +667,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
       </main>
     </div>
   );
-};
+});
+
+RoutePlanner.displayName = 'RoutePlanner';
 
 export default RoutePlanner;

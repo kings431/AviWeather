@@ -1,10 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AppState, AppActions, Station, WeatherData, ThemeMode } from '../types';
+import type { Waypoint, RouteData } from '../components/RoutePlanner';
 
 const MAX_RECENT_SEARCHES = 5;
 
-interface StoreState extends AppState, AppActions {}
+interface StoreState extends AppState, AppActions {
+  // Route Planner state
+  routeWaypoints: Waypoint[];
+  routeData: RouteData | null;
+  metarData: Record<string, any>;
+  tafData: Record<string, any>;
+  setRouteWaypoints: (waypoints: Waypoint[] | ((wps: Waypoint[]) => Waypoint[])) => void;
+  setRouteData: (data: RouteData | null | ((d: RouteData | null) => RouteData | null)) => void;
+  setMetarData: (data: Record<string, any> | ((d: Record<string, any>) => Record<string, any>)) => void;
+  setTafData: (data: Record<string, any> | ((d: Record<string, any>) => Record<string, any>)) => void;
+}
 
 const useStore = create<StoreState>()(
   persist(
@@ -16,6 +27,14 @@ const useStore = create<StoreState>()(
       themeMode: 'system',
       isLoading: false,
       error: null,
+      // Route Planner state
+      routeWaypoints: [
+        { icao: '' }, // Departure
+        { icao: '' }, // Arrival
+      ],
+      routeData: null,
+      metarData: {},
+      tafData: {},
 
       setWeatherData: (stationId, data) =>
         set((state) => ({
@@ -81,6 +100,23 @@ const useStore = create<StoreState>()(
         set(() => ({
           error: null,
         })),
+
+      setRouteWaypoints: (waypoints) =>
+        set((state) => ({
+          routeWaypoints: typeof waypoints === 'function' ? waypoints(state.routeWaypoints) : waypoints,
+        })),
+      setRouteData: (data) =>
+        set((state) => ({
+          routeData: typeof data === 'function' ? data(state.routeData) : data,
+        })),
+      setMetarData: (data) =>
+        set((state) => ({
+          metarData: typeof data === 'function' ? data(state.metarData) : data,
+        })),
+      setTafData: (data) =>
+        set((state) => ({
+          tafData: typeof data === 'function' ? data(state.tafData) : data,
+        })),
     }),
     {
       name: 'avi-weather-storage',
@@ -88,6 +124,12 @@ const useStore = create<StoreState>()(
         favorites: state.favorites,
         recentSearches: state.recentSearches,
         themeMode: state.themeMode,
+        weatherData: state.weatherData,
+        selectedStations: state.selectedStations,
+        routeWaypoints: state.routeWaypoints,
+        routeData: state.routeData,
+        metarData: state.metarData,
+        tafData: state.tafData,
       }),
     }
   )
