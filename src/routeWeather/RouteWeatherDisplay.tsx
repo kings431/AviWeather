@@ -68,7 +68,7 @@ const RouteWeatherDisplay: React.FC<RouteWeatherDisplayProps> = ({ icao, weather
 
   if (loading) return <div className="p-4">Loading weather for {icao}...</div>;
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
-  if (!weather || !station) return null;
+  if (!weather || !station) return <div className="p-4 text-yellow-600">No weather or station data for {icao}.</div>;
 
   return (
     <ErrorBoundary>
