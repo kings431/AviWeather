@@ -440,6 +440,69 @@ function App() {
     const [airmetData, setAirmetData] = React.useState<any>(null);
     const [isPlaying, setIsPlaying] = React.useState(false);
 
+    // Weather type toggles
+    const [showMetar, setShowMetar] = React.useState(true);
+    const [showTaf, setShowTaf] = React.useState(true);
+    const [showNotam, setShowNotam] = React.useState(true);
+    const [showSigmet, setShowSigmet] = React.useState(true);
+    const [showAirmet, setShowAirmet] = React.useState(true);
+    const [showPirep, setShowPirep] = React.useState(true);
+
+    // Add state for approach type selection for each alternate
+    const [alternateApproachTypes, setAlternateApproachTypes] = React.useState<Record<string, string>>({});
+
+    // Helper: Calculate alternate suitability per CAP GEN
+    function calculateAlternate(
+      taf: { periods?: any[] },
+      approachType: string,
+      minIfrAlt: number = 0
+    ) {
+      if (!taf || !taf.periods || taf.periods.length === 0) return { qualifies: false, reason: 'No TAF data', usedPeriod: null };
+      // Use the first period (or let user select ETA in future)
+      const period = taf.periods[0] as any;
+      // Find lowest BKN/OVC
+      let ceiling = null;
+      if (period.clouds && period.clouds.length > 0) {
+        const bknOvc = period.clouds.filter((c: any) => c.type === 'BKN' || c.type === 'OVC');
+        if (bknOvc.length > 0) {
+          ceiling = Math.min(...bknOvc.map((c: any) => c.height));
+        }
+      }
+      // Find visibility
+      const vis = period.visibility?.value || null;
+      // Set minima
+      let requiredCeiling, requiredVis, criteria = '';
+      if (approachType === 'precision') {
+        requiredCeiling = 600;
+        requiredVis = 2;
+        criteria = 'Precision Approach: Ceiling ≥ 600 ft, Visibility ≥ 2 SM';
+      } else if (approachType === 'non-precision') {
+        requiredCeiling = 800;
+        requiredVis = 2;
+        criteria = 'Non-Precision Approach: Ceiling ≥ 800 ft, Visibility ≥ 2 SM';
+      } else {
+        requiredCeiling = minIfrAlt + 500;
+        requiredVis = 3;
+        criteria = 'No Instrument Approach: Ceiling ≥ 500 ft above min IFR altitude, Visibility ≥ 3 SM';
+      }
+      // Check for TEMPO/PROB30 below limits
+      const disqualifyingTempo = taf.periods.some((p: any) =>
+        (p.type === 'TEMPO' || p.raw.includes('PROB30')) &&
+        ((p.clouds && p.clouds.some((c: any) => (c.type === 'BKN' || c.type === 'OVC') && c.height < requiredCeiling)) ||
+         (p.visibility && p.visibility.value < requiredVis))
+      );
+      if (disqualifyingTempo) {
+        return { qualifies: false, reason: 'TEMPO/PROB30 below limits in TAF', usedPeriod: period, criteria };
+      }
+      if (ceiling === null || vis === null) {
+        return { qualifies: false, reason: 'No ceiling/visibility in TAF', usedPeriod: period, criteria };
+      }
+      if (ceiling >= requiredCeiling && vis >= requiredVis) {
+        return { qualifies: true, reason: 'Meets alternate minima', usedPeriod: period, criteria };
+      }
+      return { qualifies: false, reason: `Ceiling or visibility below minima (Ceiling: ${ceiling} ft, Vis: ${vis} SM)`, usedPeriod: period, criteria };
+    }
+
     // Fetch RainViewer radar timestamps on mount
     React.useEffect(() => {
       fetch('https://api.rainviewer.com/public/weather-maps.json')
@@ -541,6 +604,32 @@ function App() {
             value={alternates}
             onChange={e => setAlternates(e.target.value)}
           />
+          <div className="flex flex-wrap gap-4 mb-4 mt-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showMetar} onChange={() => setShowMetar(v => !v)} />
+              <span className="text-sm">METAR</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showTaf} onChange={() => setShowTaf(v => !v)} />
+              <span className="text-sm">TAF</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showNotam} onChange={() => setShowNotam(v => !v)} />
+              <span className="text-sm">NOTAMs</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showSigmet} onChange={() => setShowSigmet(v => !v)} />
+              <span className="text-sm">SIGMETs</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showAirmet} onChange={() => setShowAirmet(v => !v)} />
+              <span className="text-sm">AIRMETs</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showPirep} onChange={() => setShowPirep(v => !v)} />
+              <span className="text-sm">PIREPs</span>
+            </label>
+          </div>
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded shadow transition-colors text-sm">Plan Route</button>
         </form>
         {loading && <div className="p-4 text-center">Loading route data...</div>}
@@ -583,11 +672,6 @@ function App() {
                 )}
               </div>
               <div style={{ height: '400px', width: '100%' }}>
-                {/* Legend */}
-                <div className="absolute z-[1000] left-4 top-4 bg-white bg-opacity-90 rounded shadow px-3 py-2 text-xs flex flex-col gap-1">
-                  <div className="flex items-center gap-2"><span className="inline-block w-3 h-5 bg-blue-600 rounded-sm mr-1" style={{ background: 'url("' + markerIcon + '") center/contain no-repeat' }}></span> Route Airport</div>
-                  <div className="flex items-center gap-2"><span className="inline-block w-3 h-5 bg-green-600 rounded-sm mr-1" style={{ background: 'url(https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png) center/contain no-repeat' }}></span> Alternate</div>
-                </div>
                 <MapContainer center={routeCoords[0] || [49.91, -97.24]} zoom={5} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                   <LayersControl position="topright">
                     <LayersControl.BaseLayer checked name="OpenStreetMap">
@@ -634,15 +718,20 @@ function App() {
                   {/* Alternate markers (green icon) */}
                   {alternateStations
                     .filter(s => typeof s.latitude === 'number' && typeof s.longitude === 'number')
-                    .map((s, idx) => (
-                      <Marker key={s.icao || idx} position={[s.latitude, s.longitude]} icon={greenIcon}>
-                        <Popup>
-                          {s.icao}<br />
-                          {s.name}
-                          <div className="text-xs text-gray-500">Alternate</div>
-                        </Popup>
-                      </Marker>
-                    ))}
+                    .map((s, idx) => {
+                      const approachType = alternateApproachTypes[s.icao] || 'non-precision';
+                      const taf = s.weather?.taf;
+                      const altResult = calculateAlternate(taf, approachType, 0);
+                      return (
+                        <Marker key={s.icao || idx} position={[s.latitude, s.longitude]} icon={greenIcon}>
+                          <Popup>
+                            {s.icao}<br />
+                            {s.name}
+                            <div className="text-xs text-gray-500">Alternate</div>
+                          </Popup>
+                        </Marker>
+                      );
+                    })}
                   {routeCoords.length > 1 && <Polyline positions={routeCoords} color="blue" />}
                 </MapContainer>
               </div>
@@ -657,30 +746,64 @@ function App() {
                         <span className="font-bold text-lg">{s.icao}</span> {s.name && <span className="text-base ml-2">- {s.name}</span>}
                       </div>
                       {/* METAR */}
-                      <div>
-                        <h3 className="text-base font-semibold mb-1">METAR</h3>
-                        {s.weather?.metar?.raw ? (
-                          <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.metar.raw}</pre>
-                        ) : (
-                          <div className="text-gray-500">No METAR available</div>
-                        )}
-                      </div>
-                      <hr className="my-2 border-gray-300 dark:border-gray-700" />
+                      {showMetar && (
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">METAR</h3>
+                          {s.weather?.metar?.raw ? (
+                            <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.metar.raw}</pre>
+                          ) : (
+                            <div className="text-gray-500">No METAR available</div>
+                          )}
+                        </div>
+                      )}
+                      {showMetar && <hr className="my-2 border-gray-300 dark:border-gray-700" />}
                       {/* TAF */}
-                      <div>
-                        <h3 className="text-base font-semibold mb-1">TAF</h3>
-                        {s.weather?.taf?.raw ? (
-                          <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.taf.raw}</pre>
-                        ) : (
-                          <div className="text-gray-500">No TAF available</div>
-                        )}
-                      </div>
-                      <hr className="my-2 border-gray-300 dark:border-gray-700" />
+                      {showTaf && (
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">TAF</h3>
+                          {s.weather?.taf?.raw ? (
+                            <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.taf.raw}</pre>
+                          ) : (
+                            <div className="text-gray-500">No TAF available</div>
+                          )}
+                        </div>
+                      )}
+                      {showTaf && <hr className="my-2 border-gray-300 dark:border-gray-700" />}
                       {/* NOTAMs */}
-                      <div>
-                        <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
-                        <NotamDisplay icao={s.icao} rawStyle={true} />
-                      </div>
+                      {showNotam && (
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
+                          <NotamDisplay icao={s.icao} rawStyle={true} />
+                        </div>
+                      )}
+                      {showNotam && <hr className="my-2 border-gray-300 dark:border-gray-700" />}
+                      {/* SIGMETs */}
+                      {showSigmet && s.weather?.sigmet && s.weather.sigmet.length > 0 && (
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">SIGMETs</h3>
+                          {s.weather.sigmet.map((sigmet: any) => (
+                            <pre key={sigmet.pk} className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-red-200 rounded p-3 border border-red-700 overflow-x-auto mb-2">{sigmet.text}</pre>
+                          ))}
+                        </div>
+                      )}
+                      {/* AIRMETs */}
+                      {showAirmet && s.weather?.airmet && s.weather.airmet.length > 0 && (
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">AIRMETs</h3>
+                          {s.weather.airmet.map((airmet: any) => (
+                            <pre key={airmet.pk} className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-yellow-200 rounded p-3 border border-yellow-700 overflow-x-auto mb-2">{airmet.text}</pre>
+                          ))}
+                        </div>
+                      )}
+                      {/* PIREPs */}
+                      {showPirep && s.weather?.pirep && s.weather.pirep.length > 0 && (
+                        <div>
+                          <h3 className="text-base font-semibold mb-1">PIREPs</h3>
+                          {s.weather.pirep.map((pirep: any) => (
+                            <pre key={pirep.pk} className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-blue-200 rounded p-3 border border-blue-700 overflow-x-auto mb-2">{pirep.text}</pre>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -690,40 +813,102 @@ function App() {
               <div className="card">
                 <h2 className="text-lg font-semibold mb-2">Alternate Airports Weather & NOTAMs</h2>
                 <ul>
-                  {alternateStations.map((s, idx) => (
-                    <li key={s.icao || idx} className="mb-4">
-                      <div className="card p-4 space-y-4">
-                        <div className="mb-2">
-                          <span className="font-bold text-lg">{s.icao}</span> {s.name && <span className="text-base ml-2">- {s.name}</span>}
-                        </div>
-                        {/* METAR */}
-                        <div>
-                          <h3 className="text-base font-semibold mb-1">METAR</h3>
-                          {s.weather?.metar?.raw ? (
-                            <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.metar.raw}</pre>
-                          ) : (
-                            <div className="text-gray-500">No METAR available</div>
+                  {alternateStations.map((s, idx) => {
+                    const approachType = alternateApproachTypes[s.icao] || 'non-precision';
+                    const taf = s.weather?.taf;
+                    const altResult = calculateAlternate(taf, approachType, 0);
+                    return (
+                      <li key={s.icao || idx} className="mb-4">
+                        <div className="card p-4 space-y-4">
+                          <div className="mb-2">
+                            <span className="font-bold text-lg">{s.icao}</span> {s.name && <span className="text-base ml-2">- {s.name}</span>}
+                          </div>
+                          {/* Approach type selector */}
+                          <div className="mb-2">
+                            <label className="text-sm font-medium mr-2">Approach Type:</label>
+                            <select
+                              className="rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm"
+                              value={approachType}
+                              onChange={e => setAlternateApproachTypes(a => ({ ...a, [s.icao]: e.target.value }))}
+                            >
+                              <option value="precision">Precision</option>
+                              <option value="non-precision">Non-Precision</option>
+                              <option value="none">No Instrument Approach</option>
+                            </select>
+                          </div>
+                          {/* METAR */}
+                          {showMetar && (
+                            <div>
+                              <h3 className="text-base font-semibold mb-1">METAR</h3>
+                              {s.weather?.metar?.raw ? (
+                                <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.metar.raw}</pre>
+                              ) : (
+                                <div className="text-gray-500">No METAR available</div>
+                              )}
+                            </div>
                           )}
-                        </div>
-                        <hr className="my-2 border-gray-300 dark:border-gray-700" />
-                        {/* TAF */}
-                        <div>
-                          <h3 className="text-base font-semibold mb-1">TAF</h3>
-                          {s.weather?.taf?.raw ? (
-                            <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.taf.raw}</pre>
-                          ) : (
-                            <div className="text-gray-500">No TAF available</div>
+                          {showMetar && <hr className="my-2 border-gray-300 dark:border-gray-700" />}
+                          {/* TAF */}
+                          {showTaf && (
+                            <div>
+                              <h3 className="text-base font-semibold mb-1">TAF</h3>
+                              {s.weather?.taf?.raw ? (
+                                <pre className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-gray-100 rounded p-3 border border-gray-700 overflow-x-auto">{s.weather.taf.raw}</pre>
+                              ) : (
+                                <div className="text-gray-500">No TAF available</div>
+                              )}
+                            </div>
                           )}
+                          {showTaf && <hr className="my-2 border-gray-300 dark:border-gray-700" />}
+                          {/* NOTAMs */}
+                          {showNotam && (
+                            <div>
+                              <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
+                              <NotamDisplay icao={s.icao} rawStyle={true} />
+                            </div>
+                          )}
+                          {showNotam && <hr className="my-2 border-gray-300 dark:border-gray-700" />}
+                          {/* SIGMETs */}
+                          {showSigmet && s.weather?.sigmet && s.weather.sigmet.length > 0 && (
+                            <div>
+                              <h3 className="text-base font-semibold mb-1">SIGMETs</h3>
+                              {s.weather.sigmet.map((sigmet: any) => (
+                                <pre key={sigmet.pk} className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-red-200 rounded p-3 border border-red-700 overflow-x-auto mb-2">{sigmet.text}</pre>
+                              ))}
+                            </div>
+                          )}
+                          {/* AIRMETs */}
+                          {showAirmet && s.weather?.airmet && s.weather.airmet.length > 0 && (
+                            <div>
+                              <h3 className="text-base font-semibold mb-1">AIRMETs</h3>
+                              {s.weather.airmet.map((airmet: any) => (
+                                <pre key={airmet.pk} className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-yellow-200 rounded p-3 border border-yellow-700 overflow-x-auto mb-2">{airmet.text}</pre>
+                              ))}
+                            </div>
+                          )}
+                          {/* PIREPs */}
+                          {showPirep && s.weather?.pirep && s.weather.pirep.length > 0 && (
+                            <div>
+                              <h3 className="text-base font-semibold mb-1">PIREPs</h3>
+                              {s.weather.pirep.map((pirep: any) => (
+                                <pre key={pirep.pk} className="font-mono text-xs whitespace-pre-wrap bg-gray-900/80 text-blue-200 rounded p-3 border border-blue-700 overflow-x-auto mb-2">{pirep.text}</pre>
+                              ))}
+                            </div>
+                          )}
+                          {/* Alternate calculation result */}
+                          <div className={`rounded p-3 mt-2 ${altResult.qualifies ? 'bg-green-100 border border-green-400 text-green-900' : 'bg-red-100 border border-red-400 text-red-900'}`}>
+                            <div className="font-semibold mb-1">Alternate Suitability: {altResult.qualifies ? 'QUALIFIES' : 'DOES NOT QUALIFY'}</div>
+                            <div className="text-xs mb-1">{altResult.criteria}</div>
+                            <div className="text-xs">{altResult.reason}</div>
+                            {altResult.usedPeriod && (
+                              <div className="text-xs mt-1 text-gray-700">TAF Period Used: <span className="font-mono">{altResult.usedPeriod.raw}</span></div>
+                            )}
+                            <div className="text-xs mt-2 italic text-gray-600">This alternate calculation is for reference only. Always verify with official sources and current regulations.</div>
+                          </div>
                         </div>
-                        <hr className="my-2 border-gray-300 dark:border-gray-700" />
-                        {/* NOTAMs */}
-                        <div>
-                          <h3 className="text-base font-semibold mb-1">NOTAMs</h3>
-                          <NotamDisplay icao={s.icao} rawStyle={true} />
-                        </div>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
