@@ -545,27 +545,29 @@ function App() {
               </div>
             ) : (
               <>
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    <div className="flex-1 min-w-0">
-                      <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
-                      <WeatherReports
-                        sigmets={weatherData[selectedStations[0]?.icao]?.sigmet}
-                        airmets={weatherData[selectedStations[0]?.icao]?.airmet}
-                        pireps={weatherData[selectedStations[0]?.icao]?.pirep}
-                      />
-                      {weatherData[selectedStations[0]?.icao]?.metar && (
-                        <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} />
-                      )}
-                      {weatherData[selectedStations[0]?.icao]?.taf && (
+                <StationInfo station={selectedStations[0]} lastUpdated={weatherData[selectedStations[0]?.icao]?.lastUpdated} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  {/* Left column: METAR, NOTAMs */}
+                  <div className="flex flex-col gap-6">
+                    {weatherData[selectedStations[0]?.icao]?.metar && (
+                      <MetarDisplay data={weatherData[selectedStations[0]?.icao]?.metar!} icao={selectedStations[0]?.icao} />
+                    )}
+                    <WeatherReports
+                      sigmets={weatherData[selectedStations[0]?.icao]?.sigmet}
+                      airmets={weatherData[selectedStations[0]?.icao]?.airmet}
+                      pireps={weatherData[selectedStations[0]?.icao]?.pirep}
+                    />
+                  </div>
+                  {/* Right column: TAF, GFAs, Radar, Weather Cameras */}
+                  <div className="flex flex-col gap-6">
+                    {weatherData[selectedStations[0]?.icao]?.taf && (
+                      <div className="card p-4 animate-fade-in print:hidden">
                         <TafDisplay data={weatherData[selectedStations[0]?.icao]?.taf!} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-6">
-                      <GFADisplay icao={selectedStations[0]?.icao} />
-                      <RadarDisplay icao={selectedStations[0]?.icao} />
-                      <WeatherCameras icao={selectedStations[0]?.icao} />
-                    </div>
+                      </div>
+                    )}
+                    <GFADisplay icao={selectedStations[0]?.icao} />
+                    <RadarDisplay icao={selectedStations[0]?.icao} />
+                    <WeatherCameras icao={selectedStations[0]?.icao} />
                   </div>
                 </div>
               </>
