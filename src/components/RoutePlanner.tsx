@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../store';
 import { useRouteStore } from '../store/routeStore';
-import { fetchWeatherData, fetchStationData } from '../services/weatherApi';
+import { fetchWeatherData, fetchStationData, fetchNearestAirports } from '../services/weatherApi';
 import { RouteOptimizer } from '../services/routeOptimizer';
 import { Route } from '../types';
-import { MapContainer, TileLayer, Marker, Polyline, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, LayersControl, Popup } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { Plus, Minus, Search, Settings, ChevronDown, ChevronRight, Plane, Clock, Route as RouteIcon } from 'lucide-react';
+import { Plus, Minus, Search, Settings, ChevronDown, ChevronRight, Plane, Clock, Route as RouteIcon, MapPin } from 'lucide-react';
 
 // Fix Leaflet's default icon path issues with bundlers
 // @ts-ignore
@@ -20,6 +20,17 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
+});
+
+// Custom green icon for alternates
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
 interface RoutePlannerProps {
@@ -36,6 +47,15 @@ export interface RouteData {
   waypoints: Waypoint[];
   distance: number;
   ete: number;
+}
+
+interface AlternateAirport {
+  icao: string;
+  name: string;
+  distance: number;
+  bearing: number;
+  lat: number;
+  lon: number;
 }
 
 // Isolated fetchers for route planner
@@ -60,6 +80,28 @@ async function fetchMetar(icao: string) {
   return res.ok ? res.json() : null;
 }
 
+// Helper functions for alternates calculation
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3440.065; // nautical miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+  let brng = Math.atan2(y, x) * 180 / Math.PI;
+  return (brng + 360) % 360;
+}
+
 const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([
     { icao: '' }, // Departure
@@ -73,16 +115,19 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   const [error, setError] = useState<string | null>(null);
   const [suggestedRoute, setSuggestedRoute] = useState<Route | null>(null);
   const [weatherData, setWeatherData] = useState<any>(null);
+  const [alternateAirports, setAlternateAirports] = useState<AlternateAirport[]>([]);
+  const [showAlternates, setShowAlternates] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     metar: true,
     taf: false,
     gfa: false,
     sigmet: false,
-    airmet: false
+    airmet: false,
+    alternates: false
   });
 
   const { favorites } = useStore();
-  const { setCurrentRoute, setAlternateAirports, setLoading, setError: setRouteError } = useRouteStore();
+  const { setCurrentRoute, setError: setRouteError } = useRouteStore();
 
   const aircraftPresets = [
     { label: 'Cessna 172', speed: 120 },
@@ -126,15 +171,53 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     setValidation(v => v.filter((_, i) => i !== idx));
   };
 
+  const findAlternates = async (destinationIcao: string, destLat: number, destLon: number) => {
+    try {
+      const nearbyAirports = await fetchNearestAirports(destLat, destLon, destinationIcao);
+      
+      const alternates: AlternateAirport[] = nearbyAirports
+        .filter((airport: any) => {
+          const aptLat = airport.geometry?.coordinates?.[1];
+          const aptLon = airport.geometry?.coordinates?.[0];
+          if (typeof aptLat !== 'number' || typeof aptLon !== 'number') return false;
+          
+          const distance = haversine(destLat, destLon, aptLat, aptLon);
+          return distance <= 100 && airport.icao && airport.icao !== destinationIcao; // Within 100nm
+        })
+        .map((airport: any) => {
+          const aptLat = airport.geometry.coordinates[1];
+          const aptLon = airport.geometry.coordinates[0];
+          const distance = haversine(destLat, destLon, aptLat, aptLon);
+          const brng = bearing(destLat, destLon, aptLat, aptLon);
+          
+          return {
+            icao: airport.icao,
+            name: airport.name || `${airport.icao} Airport`,
+            distance: Math.round(distance),
+            bearing: Math.round(brng),
+            lat: aptLat,
+            lon: aptLon
+          };
+        })
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 5); // Top 5 closest alternates
+
+      setAlternateAirports(alternates);
+    } catch (error) {
+      console.error('Error finding alternates:', error);
+      setAlternateAirports([]);
+    }
+  };
+
   const findRoute = async () => {
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
     
     // Validate ICAOs
     const valid = waypoints.map(wp => /^[A-Z0-9]{4}$/.test(wp.icao));
     setValidation(valid);
     if (valid.some(v => !v)) { 
-      setLoading(false); 
+      setIsLoading(false); 
       return; 
     }
 
@@ -148,7 +231,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
     if (wpsWithCoords.some(wp => typeof wp.lat !== 'number' || typeof wp.lon !== 'number')) {
       setError('One or more ICAOs not found.');
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
@@ -158,11 +241,17 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     let distance = 0;
     for (let i = 1; i < wpsWithCoords.length; i++) {
       if (typeof wpsWithCoords[i - 1].lat === 'number' && typeof wpsWithCoords[i - 1].lon === 'number' && typeof wpsWithCoords[i].lat === 'number' && typeof wpsWithCoords[i].lon === 'number') {
-        distance += haversine(wpsWithCoords[i - 1] as { lat: number; lon: number }, wpsWithCoords[i] as { lat: number; lon: number });
+        distance += haversine(wpsWithCoords[i - 1].lat!, wpsWithCoords[i - 1].lon!, wpsWithCoords[i].lat!, wpsWithCoords[i].lon!);
       }
     }
     const ete = Math.round(distance / cruiseSpeed * 60);
     setRouteData({ waypoints: wpsWithCoords, distance: Math.round(distance), ete });
+
+    // Find alternates for the destination
+    const destination = wpsWithCoords[wpsWithCoords.length - 1];
+    if (destination.lat && destination.lon) {
+      await findAlternates(destination.icao, destination.lat, destination.lon);
+    }
 
     // Fetch weather data for each waypoint
     const metar: Record<string, any> = {};
@@ -174,7 +263,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
     setMetarData(metar);
     setTafData(taf);
-    setLoading(false);
+    setIsLoading(false);
 
     try {
       const optimizer = RouteOptimizer.getInstance();
@@ -201,18 +290,6 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
     }
   };
 
-  // Haversine formula for distance (nm)
-  function haversine(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
-    const toRad = (x: number) => (x * Math.PI) / 180;
-    const R = 3440.065; // nautical miles
-    const dLat = toRad(b.lat - a.lat);
-    const dLon = toRad(b.lon - a.lon);
-    const lat1 = toRad(a.lat);
-    const lat2 = toRad(b.lat);
-    const aVal = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
-  }
-
   const position: LatLngExpression = waypoints.length > 0 && waypoints[0].lat && waypoints[0].lon
     ? [waypoints[0].lat, waypoints[0].lon]
     : [49.91, -97.24];
@@ -229,7 +306,7 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+      <div className="bg-slate-800 border-b border-slate-700 px-6 py-4 fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
@@ -259,9 +336,9 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex pt-20 h-screen">
         {/* Left Sidebar - Route Planning */}
-        <div className="w-80 bg-slate-800 border-r border-slate-700 flex flex-col">
+        <div className="w-80 bg-slate-800 border-r border-slate-700 flex flex-col overflow-y-auto">
           {/* Route Section */}
           <div className="p-6 border-b border-slate-700">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -361,7 +438,8 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
 
           {/* Route Details */}
           {routeData && (
-            <div className="p-6">
+            <div className="p-6 border-b border-slate-700">
+              <h3 className="text-sm font-semibold text-slate-400 mb-3">Route Details</h3>
               <div className="space-y-2">
                 {waypoints.map((wp, idx) => (
                   <div key={idx} className="flex justify-between items-center py-2">
@@ -381,6 +459,43 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
               </div>
             </div>
           )}
+
+          {/* Alternates Section */}
+          {alternateAirports.length > 0 && (
+            <div className="p-6">
+              <h3 className="text-sm font-semibold text-slate-400 mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
+                Alternate Airports
+              </h3>
+              <div className="space-y-2">
+                {alternateAirports.map((alt) => (
+                  <div key={alt.icao} className="bg-slate-700 rounded-lg p-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-mono text-sm font-semibold">{alt.icao}</div>
+                        <div className="text-xs text-slate-300 truncate">{alt.name}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-400">{alt.distance} nm</div>
+                        <div className="text-xs text-slate-400">{alt.bearing}°</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={showAlternates}
+                    onChange={(e) => setShowAlternates(e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-300">Show on map</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Center - Map */}
@@ -391,24 +506,25 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             scrollWheelZoom={true}
             className="w-full h-full"
             style={{ background: '#1e293b' }}
+            attributionControl={false}
           >
             <LayersControl position="topright">
               <LayersControl.BaseLayer checked name="Dark">
                 <TileLayer
                   url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+                  attribution=""
                 />
               </LayersControl.BaseLayer>
               <LayersControl.BaseLayer name="Satellite">
                 <TileLayer
                   url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  attribution="Tiles &copy; Esri"
+                  attribution=""
                 />
               </LayersControl.BaseLayer>
               <LayersControl.Overlay name="Weather Radar">
                 <TileLayer
                   url="https://tilecache.rainviewer.com/v2/radar/{z}/{x}/{y}/256/6/1_1.png"
-                  attribution="Radar &copy; RainViewer"
+                  attribution=""
                   opacity={0.6}
                 />
               </LayersControl.Overlay>
@@ -426,9 +542,36 @@ const RoutePlanner: React.FC<RoutePlannerProps> = ({ onRouteSelect }) => {
             {waypoints.map((wp, idx) =>
               wp.lat && wp.lon ? (
                 <Marker key={wp.icao + idx} position={[wp.lat, wp.lon]}>
+                  <Popup>
+                    <div className="text-slate-900">
+                      <div className="font-mono font-semibold">{wp.icao}</div>
+                      <div className="text-sm">
+                        {idx === 0 ? 'Departure' : idx === waypoints.length - 1 ? 'Destination' : 'Waypoint'}
+                      </div>
+                      <div className="text-xs mt-1">
+                        {wp.lat.toFixed(4)}, {wp.lon.toFixed(4)}
+                      </div>
+                    </div>
+                  </Popup>
                 </Marker>
               ) : null
             )}
+
+            {/* Show alternate airports if enabled */}
+            {showAlternates && alternateAirports.map((alt) => (
+              <Marker key={alt.icao} position={[alt.lat, alt.lon]} icon={greenIcon}>
+                <Popup>
+                  <div className="text-slate-900">
+                    <div className="font-mono font-semibold">{alt.icao}</div>
+                    <div className="text-sm">Alternate</div>
+                    <div className="text-xs">{alt.name}</div>
+                    <div className="text-xs mt-1">
+                      {alt.distance} nm, {alt.bearing}°
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         </div>
 

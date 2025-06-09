@@ -69,6 +69,11 @@
   }
 }
 
+/* Hide Leaflet attribution */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
 @media print {
   body, .min-h-screen, .container, .card, .bg-gray-*, .dark\:bg-gray-*, .border, .shadow-sm, .rounded, .animate-fade-in {
     background: #fff !important;
