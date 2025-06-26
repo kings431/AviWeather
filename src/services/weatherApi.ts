@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { MetarData, TafData, Station, WeatherData, TafPeriod, SigmetData, AirmetData, PirepData, Route, Airport } from '../types';
+import { MultiLegRoute, Waypoint, RouteLeg } from '../types/route';
 
 // API endpoints with CORS proxy
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
@@ -700,3 +701,127 @@ export const findAlternateAirports = async (route: Route, maxDistance: number = 
 };
 
 export { parseMetar };
+
+// Batch weather fetching for multi-leg routes
+export const fetchBatchWeatherData = async (icaoCodes: string[]): Promise<Record<string, WeatherData>> => {
+  const results: Record<string, WeatherData> = {};
+  const uniqueCodes = [...new Set(icaoCodes)].filter(Boolean);
+  
+  if (uniqueCodes.length === 0) return results;
+  
+  try {
+    // Fetch all METAR data in parallel
+    const metarPromises = uniqueCodes.map(async (icao) => {
+      try {
+        const metarData = await fetchWeatherData(icao);
+        return { icao, data: metarData };
+      } catch (error) {
+        console.warn(`Failed to fetch weather for ${icao}:`, error);
+        return { icao, data: { error: `Failed to fetch weather for ${icao}` } as WeatherData };
+      }
+    });
+    
+    const metarResults = await Promise.allSettled(metarPromises);
+    
+    // Process results
+    metarResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const { icao, data } = result.value;
+        results[icao] = data;
+      }
+    });
+    
+    return results;
+  } catch (error) {
+    console.error('Batch weather fetch failed:', error);
+    throw new Error('Failed to fetch batch weather data');
+  }
+};
+
+// Enhanced route calculation for multi-leg routes
+export const calculateMultiLegRoute = async (waypoints: string[]): Promise<MultiLegRoute> => {
+  if (waypoints.length < 2) {
+    throw new Error('Route must have at least 2 waypoints');
+  }
+  
+  const validWaypoints = waypoints.filter(Boolean);
+  if (validWaypoints.length < 2) {
+    throw new Error('Route must have at least 2 valid waypoints');
+  }
+  
+  // Fetch waypoint data
+  const waypointData: Waypoint[] = [];
+  for (const icao of validWaypoints) {
+    try {
+      const stationData = await fetchStationData(icao);
+      waypointData.push({
+        icao: stationData.icao,
+        lat: stationData.latitude,
+        lon: stationData.longitude,
+        name: stationData.name,
+        city: stationData.city,
+        state: stationData.state,
+        country: stationData.country,
+        elevation: stationData.elevation,
+        order: waypointData.length,
+      });
+    } catch (error) {
+      console.warn(`Failed to fetch data for waypoint ${icao}:`, error);
+      waypointData.push({
+        icao,
+        order: waypointData.length,
+      });
+    }
+  }
+  
+  // Calculate legs
+  const legs: RouteLeg[] = [];
+  let totalDistance = 0;
+  let totalEstimatedTime = 0;
+  
+  for (let i = 0; i < waypointData.length - 1; i++) {
+    const departure = waypointData[i];
+    const arrival = waypointData[i + 1];
+    
+    if (departure.lat && departure.lon && arrival.lat && arrival.lon) {
+      const distance = haversine(departure.lat, departure.lon, arrival.lat, arrival.lon);
+      const bearing = calculateBearing(departure.lat, departure.lon, arrival.lat, arrival.lon);
+      const estimatedTime = distance / 120; // Assuming 120 knots average speed
+      
+      legs.push({
+        departure,
+        arrival,
+        distance,
+        estimatedTime,
+        bearing,
+        weatherConditions: [],
+      });
+      
+      totalDistance += distance;
+      totalEstimatedTime += estimatedTime;
+    }
+  }
+  
+  // Fetch weather data for all waypoints
+  const weatherData = await fetchBatchWeatherData(validWaypoints);
+  
+  return {
+    waypoints: waypointData,
+    legs,
+    totalDistance,
+    totalEstimatedTime,
+    weatherData,
+    alternates: [],
+    lastUpdated: Date.now(),
+  };
+};
+
+// Helper function to calculate bearing between two points
+const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+  let brng = Math.atan2(y, x) * 180 / Math.PI;
+  return (brng + 360) % 360;
+};

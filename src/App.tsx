@@ -27,7 +27,8 @@ import { FlightCategoryBadge } from './components/MetarDisplay';
 import MetarDisplay from './components/MetarDisplay';
 import TafDisplay from './components/TafDisplay';
 import RoutePlanner from './components/RoutePlanner';
-import type { Route } from './types';
+import MultiLegRoutePlanner from './components/MultiLegRoutePlanner';
+import type { Route, MultiLegRoute } from './types';
 import StationInfo from './components/StationInfo';
 import WeatherReports from './components/WeatherReports';
 import ParticleBackground from './components/ParticleBackground';
@@ -479,6 +480,19 @@ function App() {
     );
   }
 
+  function MultiLegRoutePlannerPage() {
+    const handleRouteSelect = (route: MultiLegRoute) => {
+      // Handle multi-leg route selection
+      console.log('Multi-leg route selected:', route);
+    };
+
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <MultiLegRoutePlanner onRouteSelect={handleRouteSelect} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden relative">
       <ParticleBackground />
@@ -525,6 +539,7 @@ function App() {
             } />
             <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
             <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
+            <RouterRoute path="/multi-leg-route-planner" element={<MultiLegRoutePlannerPage />} />
           </Routes>
         ) : (
           <div className="container mx-auto max-w-7xl px-4 py-8 w-full pt-[200px] sm:pt-[154px]">
@@ -590,6 +605,7 @@ function App() {
               } />
               <RouterRoute path="/airport/:icao" element={<AirportDetailsPage />} />
               <RouterRoute path="/route-planner" element={<RoutePlannerPage />} />
+              <RouterRoute path="/multi-leg-route-planner" element={<MultiLegRoutePlannerPage />} />
             </Routes>
           </div>
         )}

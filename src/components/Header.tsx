@@ -26,8 +26,9 @@ const Header: React.FC = () => {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Aviation Weather for Pilots</p>
               </div>
             </button>
-            <nav className="ml-6">
+            <nav className="ml-6 flex gap-4">
               <Link to="/route-planner" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Route Planner</Link>
+              <Link to="/multi-leg-route-planner" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Multi-Leg Routes</Link>
             </nav>
           </div>
           
