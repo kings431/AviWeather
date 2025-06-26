@@ -35,7 +35,8 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
     [waypoints]
   );
   
-  const canCalculateRoute = validWaypoints.length >= 2;
+  // Only allow calculation if user has entered at least 2 valid ICAOs
+  const canCalculateRoute = validWaypoints.length >= 2 && validWaypoints.every(wp => !!wp.icao && wp.icao.length === 4);
 
   // Create a stable query key
   const queryKey = useMemo(() => 
@@ -53,6 +54,12 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
     retry: 1,
     retryDelay: 1000,
   });
+
+  // Debugging logs
+  console.log('routeQuery', routeQuery);
+  console.log('multiLegRoute', multiLegRoute);
+  console.log('validWaypoints', validWaypoints);
+  console.log('waypoints', waypoints);
 
   // Update route in store when query completes
   useEffect(() => {
@@ -129,6 +136,7 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   };
 
   if (routeQuery.isLoading) {
+    console.log('Loading...');
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="text-center">
@@ -140,6 +148,7 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   }
 
   if (routeQuery.error) {
+    console.log('Error:', routeQuery.error);
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="flex items-center">
@@ -157,6 +166,10 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
         </div>
       </div>
     );
+  }
+
+  if (multiLegRoute) {
+    console.log('Rendering route:', multiLegRoute);
   }
 
   return (
