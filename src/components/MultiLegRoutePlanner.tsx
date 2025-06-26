@@ -15,8 +15,6 @@ interface MultiLegRoutePlannerProps {
 }
 
 const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSelect }) => {
-  console.log('MultiLegRoutePlanner render');
-  
   const {
     routePlanningState,
     multiLegRoute,
@@ -35,13 +33,6 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   const validWaypoints = waypoints.filter(wp => wp.icao && wp.icao.length === 4);
   const canCalculateRoute = validWaypoints.length >= 2;
 
-  console.log('MultiLegRoutePlanner state:', {
-    waypoints,
-    validWaypoints,
-    canCalculateRoute,
-    multiLegRoute: !!multiLegRoute
-  });
-
   // Calculate route using React Query
   const routeQuery = useQuery({
     queryKey: ['multiLegRoute', validWaypoints.map(wp => wp.icao)],
@@ -51,224 +42,246 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
     cacheTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  console.log('Route query state:', {
-    isLoading: routeQuery.isLoading,
-    error: routeQuery.error,
-    data: !!routeQuery.data
-  });
-
   // Update route in store when query completes
   useEffect(() => {
     if (routeQuery.data) {
       setMultiLegRoute(routeQuery.data);
-      onRouteSelect?.(routeQuery.data);
     }
-  }, [routeQuery.data, setMultiLegRoute, onRouteSelect]);
+  }, [routeQuery.data, setMultiLegRoute]);
 
   // Refresh weather data for all waypoints
-  const refreshWeather = useCallback(async () => {
+  const handleRefreshWeather = async () => {
     if (!multiLegRoute) return;
-
+    
     setIsRefreshing(true);
     try {
-      const icaoCodes = multiLegRoute.waypoints.map(wp => wp.icao).filter(Boolean);
-      const weatherData = await fetchBatchWeatherData(icaoCodes);
+      const waypointIcaos = multiLegRoute.waypoints.map(wp => wp.icao);
+      const weatherData = await fetchBatchWeatherData(waypointIcaos);
       
-      // Update cache with new weather data
+      // Update cache with fresh data
       Object.entries(weatherData).forEach(([icao, data]) => {
         updateWeatherCache(icao, data);
       });
       
-      // Update route with new weather data
-      setMultiLegRoute({
-        ...multiLegRoute,
-        weatherData,
-        lastUpdated: Date.now(),
-      });
+      // Recalculate route with fresh weather
+      const updatedRoute = await calculateMultiLegRoute(waypointIcaos);
+      setMultiLegRoute(updatedRoute);
     } catch (error) {
-      console.error('Failed to refresh weather data:', error);
+      console.error('Failed to refresh weather:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [multiLegRoute, updateWeatherCache, setMultiLegRoute]);
+  };
 
-  const handleWaypointChange = useCallback((newWaypoints: Waypoint[]) => {
-    // This will trigger the route query to recalculate
-  }, []);
-
-  const handleWaypointClick = useCallback((waypoint: Waypoint, index: number) => {
+  // Handle waypoint selection for editing
+  const handleWaypointSelect = (index: number) => {
     setSelectedWaypointIndex(index);
-  }, []);
-
-  const formatTotalDistance = (distance: number) => {
-    return `${distance.toFixed(1)} nm`;
   };
 
-  const formatTotalTime = (time: number) => {
-    const hours = Math.floor(time);
-    const minutes = Math.round((time - hours) * 60);
-    return `${hours}h ${minutes}m`;
+  // Handle waypoint update
+  const handleWaypointUpdate = (index: number, waypoint: Waypoint) => {
+    const updatedWaypoints = [...waypoints];
+    updatedWaypoints[index] = waypoint;
+    setRoutePlanningState({
+      ...routePlanningState,
+      waypoints: updatedWaypoints,
+    });
+    setSelectedWaypointIndex(null);
   };
 
-  // Use React Query states directly instead of syncing to store
-  const isLoading = routeQuery.isLoading || isRefreshing;
-  const error = routeQuery.error ? (routeQuery.error instanceof Error ? routeQuery.error.message : 'Failed to calculate route') : null;
+  // Handle waypoint removal
+  const handleWaypointRemove = (index: number) => {
+    const updatedWaypoints = waypoints.filter((_, i) => i !== index);
+    setRoutePlanningState({
+      ...routePlanningState,
+      waypoints: updatedWaypoints,
+    });
+    setSelectedWaypointIndex(null);
+  };
+
+  // Handle adding new waypoint
+  const handleAddWaypoint = () => {
+    const newWaypoint: Waypoint = {
+      icao: '',
+      order: waypoints.length,
+    };
+    
+    setRoutePlanningState({
+      ...routePlanningState,
+      waypoints: [...waypoints, newWaypoint],
+    });
+  };
+
+  if (routeQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Calculating route...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (routeQuery.error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error calculating route</h3>
+            <p className="mt-1 text-sm text-red-700">
+              {routeQuery.error instanceof Error ? routeQuery.error.message : 'An unexpected error occurred'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Multi-Leg Route Planner
-        </h2>
-        {multiLegRoute && (
-          <button
-            onClick={refreshWeather}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh Weather
-          </button>
-        )}
-      </div>
+      {/* Waypoint Management */}
+      <WaypointManager />
 
-      {/* Error Display */}
-      {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          <AlertCircle className="w-5 h-5" />
-          <span>{error}</span>
-        </div>
-      )}
+      {/* Route Display */}
+      {multiLegRoute && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Route Summary</h3>
+            <button
+              onClick={handleRefreshWeather}
+              disabled={isRefreshing}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isRefreshing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <svg className="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Weather
+                </>
+              )}
+            </button>
+          </div>
 
-      {/* Instructions for new users */}
-      {!canCalculateRoute && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-            Getting Started
-          </h3>
-          <p className="text-blue-800 dark:text-blue-200">
-            Enter at least 2 ICAO codes (departure and destination) to start planning your multi-leg route. 
-            You can add intermediate waypoints by clicking "Add Waypoint".
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Waypoint Management */}
-        <div className="space-y-6">
-          <WaypointManager onWaypointChange={handleWaypointChange} />
-          
-          {/* Route Summary */}
-          {multiLegRoute && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Route Summary
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Total Distance:</span>
-                  <span className="font-semibold">{formatTotalDistance(multiLegRoute.totalDistance)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Estimated Time:</span>
-                  <span className="font-semibold">{formatTotalTime(multiLegRoute.totalEstimatedTime)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Waypoints:</span>
-                  <span className="font-semibold">{multiLegRoute.waypoints.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Last Updated:</span>
-                  <span className="text-sm text-gray-500">
-                    {new Date(multiLegRoute.lastUpdated).toLocaleTimeString()}
-                  </span>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm font-medium text-gray-500">Total Distance</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {multiLegRoute.totalDistance.toFixed(1)} nm
               </div>
             </div>
-          )}
-
-          {/* Aircraft Settings */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Aircraft Settings
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Aircraft Type
-                </label>
-                <select
-                  value={selectedAircraft}
-                  onChange={(e) => setRoutePlanningState({ selectedAircraft: e.target.value })}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700"
-                >
-                  <option value="Cessna 172">Cessna 172</option>
-                  <option value="Piper PA-28">Piper PA-28</option>
-                  <option value="Beechcraft Bonanza">Beechcraft Bonanza</option>
-                  <option value="Cirrus SR22">Cirrus SR22</option>
-                  <option value="King Air 350">King Air 350</option>
-                  <option value="Pilatus PC-12">Pilatus PC-12</option>
-                  <option value="Custom">Custom</option>
-                </select>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm font-medium text-gray-500">Estimated Time</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {multiLegRoute.totalEstimatedTime.toFixed(1)} hrs
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Cruise Speed (knots)
-                </label>
-                <input
-                  type="number"
-                  value={cruiseSpeed}
-                  onChange={(e) => setRoutePlanningState({ cruiseSpeed: parseInt(e.target.value) || 120 })}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700"
-                  min="50"
-                  max="500"
-                />
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm font-medium text-gray-500">Waypoints</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {multiLegRoute.waypoints.length}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Column - Map and Weather */}
-        <div className="space-y-6">
-          {/* Route Map */}
-          <MultiLegRouteMap
-            route={multiLegRoute}
-            isLoading={isLoading}
-            onWaypointClick={handleWaypointClick}
-          />
-
-          {/* Weather Display for Selected Waypoint */}
-          {selectedWaypointIndex !== null && multiLegRoute && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Weather - {multiLegRoute.waypoints[selectedWaypointIndex]?.icao}
-              </h3>
-              <div className="space-y-4">
-                {multiLegRoute.weatherData[multiLegRoute.waypoints[selectedWaypointIndex]?.icao || '']?.metar && (
-                  <MetarDisplay
-                    data={multiLegRoute.weatherData[multiLegRoute.waypoints[selectedWaypointIndex]?.icao || '']?.metar!}
-                    hideRaw={false}
-                  />
-                )}
-                {multiLegRoute.weatherData[multiLegRoute.waypoints[selectedWaypointIndex]?.icao || '']?.taf && (
-                  <TafDisplay
-                    data={multiLegRoute.weatherData[multiLegRoute.waypoints[selectedWaypointIndex]?.icao || '']?.taf!}
-                    hideRaw={false}
-                  />
+          {/* Route Legs */}
+          <div className="space-y-4">
+            <h4 className="text-md font-medium text-gray-900">Route Legs</h4>
+            {multiLegRoute.legs.map((leg, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-900">
+                      {leg.departure.icao} → {leg.arrival.icao}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ({leg.distance.toFixed(1)} nm)
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {leg.estimatedTime.toFixed(2)} hrs
+                  </span>
+                </div>
+                
+                {/* Weather for this leg */}
+                {multiLegRoute.weatherData && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    {/* Departure Weather */}
+                    <div className="bg-blue-50 rounded p-3">
+                      <div className="text-xs font-medium text-blue-800 mb-1">
+                        {leg.departure.icao} Weather
+                      </div>
+                      {multiLegRoute.weatherData[leg.departure.icao] ? (
+                        <div className="text-xs">
+                          <div className="font-mono bg-white p-2 rounded border">
+                            {multiLegRoute.weatherData[leg.departure.icao].metar?.raw || 'No METAR data'}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">No weather data</div>
+                      )}
+                    </div>
+                    
+                    {/* Arrival Weather */}
+                    <div className="bg-green-50 rounded p-3">
+                      <div className="text-xs font-medium text-green-800 mb-1">
+                        {leg.arrival.icao} Weather
+                      </div>
+                      {multiLegRoute.weatherData[leg.arrival.icao] ? (
+                        <div className="text-xs">
+                          <div className="font-mono bg-white p-2 rounded border">
+                            {multiLegRoute.weatherData[leg.arrival.icao].metar?.raw || 'No METAR data'}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">No weather data</div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 flex items-center gap-3">
-            <LoadingSpinner />
-            <span className="text-gray-700 dark:text-gray-300">Calculating route...</span>
+      {/* Map Display */}
+      {multiLegRoute && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Route Map</h3>
+          <MultiLegRouteMap route={multiLegRoute} />
+        </div>
+      )}
+
+      {/* Instructions */}
+      {!multiLegRoute && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Add waypoints to plan your route</h3>
+              <p className="mt-1 text-sm text-blue-700">
+                Enter at least 2 valid ICAO codes to calculate a multi-leg route with weather information.
+              </p>
+            </div>
           </div>
         </div>
       )}
