@@ -29,6 +29,18 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   const [selectedWaypointIndex, setSelectedWaypointIndex] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Reset waypoints and route on mount
+  useEffect(() => {
+    setRoutePlanningState({
+      waypoints: [
+        { icao: '', order: 0 },
+        { icao: '', order: 1 }
+      ]
+    });
+    setMultiLegRoute(null);
+    // eslint-disable-next-line
+  }, []);
+
   // Check if we have valid waypoints for route calculation
   const validWaypoints = useMemo(() => 
     waypoints.filter(wp => wp.icao && wp.icao.length === 4), 
@@ -61,16 +73,14 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   console.log('validWaypoints', validWaypoints);
   console.log('waypoints', waypoints);
 
-  // Update route in store when query completes
+  // Only update multiLegRoute if the data is different
   useEffect(() => {
     if (routeQuery.data && !routeQuery.error) {
-      try {
+      if (JSON.stringify(routeQuery.data) !== JSON.stringify(multiLegRoute)) {
         setMultiLegRoute(routeQuery.data);
-      } catch (error) {
-        console.error('Failed to set multi-leg route:', error);
       }
     }
-  }, [routeQuery.data, routeQuery.error, setMultiLegRoute]);
+  }, [routeQuery.data, routeQuery.error, setMultiLegRoute, multiLegRoute]);
 
   // Refresh weather data for all waypoints
   const handleRefreshWeather = async () => {
