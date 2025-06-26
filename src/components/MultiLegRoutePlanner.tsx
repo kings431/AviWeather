@@ -71,12 +71,6 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
     retryDelay: 1000,
   });
 
-  // Debugging logs
-  console.log('routeQuery', routeQuery);
-  console.log('multiLegRoute', multiLegRoute);
-  console.log('validWaypoints', validWaypoints);
-  console.log('waypoints', waypoints);
-
   // Only update multiLegRoute if the data is different
   useEffect(() => {
     if (routeQuery.data && !routeQuery.error) {
@@ -150,7 +144,6 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   };
 
   if (routeQuery.isLoading) {
-    console.log('Loading...');
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="text-center">
@@ -162,7 +155,6 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   }
 
   if (routeQuery.error) {
-    console.log('Error:', routeQuery.error);
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="flex items-center">
@@ -183,7 +175,7 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   }
 
   if (multiLegRoute) {
-    console.log('Rendering route:', multiLegRoute);
+    // ... existing code ...
   }
 
   return (
