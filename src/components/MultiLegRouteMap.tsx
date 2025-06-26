@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, LayersControl } from 'react-leaflet';
 import { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Waypoint, MultiLegRoute, RouteLeg } from '../types/route';
 import { Plane, MapPin, Clock, Navigation } from 'lucide-react';
 
@@ -10,8 +11,8 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
+// Fix Leaflet icon issues
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,

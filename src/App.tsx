@@ -7,6 +7,7 @@ import GFADisplay from './components/GFADisplay';
 import NotamDisplay from './components/NotamDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
+import ErrorBoundary from './components/ErrorBoundary';
 import useStore from './store';
 import { useRouteStore } from './store/routeStore';
 import { fetchWeatherData, fetchStationData, fetchOpenAipAirport, fetchNearestAirports } from './services/weatherApi';
@@ -488,7 +489,9 @@ function App() {
 
     return (
       <div className="container mx-auto px-4 py-8">
-        <MultiLegRoutePlanner onRouteSelect={handleRouteSelect} />
+        <ErrorBoundary>
+          <MultiLegRoutePlanner onRouteSelect={handleRouteSelect} />
+        </ErrorBoundary>
       </div>
     );
   }

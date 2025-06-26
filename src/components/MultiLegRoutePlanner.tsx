@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from 'react-query';
 import { Plane, MapPin, Clock, Navigation, RefreshCw, AlertCircle } from 'lucide-react';
 import { Waypoint, MultiLegRoute } from '../types/route';
@@ -30,24 +30,40 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Check if we have valid waypoints for route calculation
-  const validWaypoints = waypoints.filter(wp => wp.icao && wp.icao.length === 4);
+  const validWaypoints = useMemo(() => 
+    waypoints.filter(wp => wp.icao && wp.icao.length === 4), 
+    [waypoints]
+  );
+  
   const canCalculateRoute = validWaypoints.length >= 2;
+
+  // Create a stable query key
+  const queryKey = useMemo(() => 
+    ['multiLegRoute', validWaypoints.map(wp => wp.icao).join(',')], 
+    [validWaypoints]
+  );
 
   // Calculate route using React Query
   const routeQuery = useQuery({
-    queryKey: ['multiLegRoute', validWaypoints.map(wp => wp.icao)],
+    queryKey,
     queryFn: () => calculateMultiLegRoute(validWaypoints.map(wp => wp.icao)),
     enabled: canCalculateRoute,
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
+    retryDelay: 1000,
   });
 
   // Update route in store when query completes
   useEffect(() => {
-    if (routeQuery.data) {
-      setMultiLegRoute(routeQuery.data);
+    if (routeQuery.data && !routeQuery.error) {
+      try {
+        setMultiLegRoute(routeQuery.data);
+      } catch (error) {
+        console.error('Failed to set multi-leg route:', error);
+      }
     }
-  }, [routeQuery.data, setMultiLegRoute]);
+  }, [routeQuery.data, routeQuery.error, setMultiLegRoute]);
 
   // Refresh weather data for all waypoints
   const handleRefreshWeather = async () => {
