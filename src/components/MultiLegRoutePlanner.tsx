@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from 'react-query';
 import { Plane, MapPin, Clock, Navigation, RefreshCw, AlertCircle } from 'lucide-react';
 import { Waypoint, MultiLegRoute } from '../types/route';
@@ -29,15 +29,19 @@ const MultiLegRoutePlanner: React.FC<MultiLegRoutePlannerProps> = ({ onRouteSele
   const [selectedWaypointIndex, setSelectedWaypointIndex] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Reset waypoints and route on mount
+  // Only reset on first mount
+  const didReset = useRef(false);
   useEffect(() => {
-    setRoutePlanningState({
-      waypoints: [
-        { icao: '', order: 0 },
-        { icao: '', order: 1 }
-      ]
-    });
-    setMultiLegRoute(null);
+    if (!didReset.current) {
+      setRoutePlanningState({
+        waypoints: [
+          { icao: '', order: 0 },
+          { icao: '', order: 1 }
+        ]
+      });
+      setMultiLegRoute(null);
+      didReset.current = true;
+    }
     // eslint-disable-next-line
   }, []);
 
